@@ -1,0 +1,27 @@
+# Dependências
+node_modules/
+
+# Builds (gerados por npm run build / desktop:build)
+web/dist/
+dist-electron/
+release/
+out/
+build/icon.png
+coverage/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Variáveis de ambiente (ex.: HYDRA_GITHUB_CLIENT_ID, GITHUB_TOKEN)
+.env
+.env.*
+!.env.example
+
+# Editor e sistema operacional
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

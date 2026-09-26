@@ -1,0 +1,6 @@
+# Finais de linha LF no repositório (o CI roda em Linux e o bin/hydra.js tem shebang)
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.exe binary

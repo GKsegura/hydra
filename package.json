@@ -1,0 +1,105 @@
+{
+  "name": "hydra-git",
+  "version": "0.1.0",
+  "description": "Cliente git visual para workspaces: todos os repositórios lado a lado, com commit, branches, merge, resolução de conflitos e sync com o GitHub.",
+  "author": {
+    "name": "José Segura (GKsegura)",
+    "url": "https://github.com/GKsegura"
+  },
+  "homepage": "https://github.com/GKsegura/hydra#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GKsegura/hydra.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GKsegura/hydra/issues"
+  },
+  "keywords": [
+    "git",
+    "gui",
+    "gitkraken",
+    "github-desktop",
+    "workspace",
+    "vue",
+    "electron"
+  ],
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "bin": {
+    "hydra": "bin/hydra.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "web/dist"
+  ],
+  "scripts": {
+    "prepare": "vite build",
+    "build": "vite build",
+    "dev": "vite",
+    "start": "node bin/hydra.js",
+    "check": "tsc --noEmit && vue-tsc --noEmit -p web/tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "desktop:compile": "vite build && node scripts/build-electron.mjs",
+    "desktop": "npm run desktop:compile && electron .",
+    "desktop:build": "npm run desktop:compile && node scripts/make-icon.mjs && electron-builder --win portable --publish never"
+  },
+  "build": {
+    "appId": "dev.gksegura.hydra",
+    "productName": "Hydra",
+    "copyright": "© 2026 José Segura (GKsegura)",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist-electron/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "web/dist",
+        "to": "web"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "portable": {
+      "artifactName": "Hydra-${version}-portable.exe"
+    }
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "semantic-release": "^25.0.9",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0",
+    "vitest": "^5.0.2",
+    "vue": "^3.5.0",
+    "vue-tsc": "^3.0.0"
+  },
+  "license": "MIT"
+}
