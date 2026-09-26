@@ -6,6 +6,7 @@
 import { app, dialog, shell, type BrowserWindow } from 'electron';
 import electronUpdater from 'electron-updater';
 import { isNewer } from '../src/version.ts';
+import { describeUpdateError } from './update-errors.ts';
 
 const { autoUpdater } = electronUpdater;
 
@@ -102,7 +103,11 @@ export function createUpdater(opts: Options): Updater {
             await info(`Hydra ${result.updateInfo.version} disponível.`, 'O download começou em segundo plano. Quando terminar, aparece um aviso no topo da janela.');
           } else await upToDate();
         } catch (err) {
-          if (manual) await info('Não foi possível procurar atualizações.', (err as Error).message);
+          console.error('Verificação de atualização falhou:', (err as Error).message);
+          if (manual) {
+            const { message, detail } = describeUpdateError((err as Error).message);
+            await info(message, detail);
+          }
         }
       },
       install() {
@@ -148,8 +153,11 @@ export function createUpdater(opts: Options): Updater {
             if (response === 0) void shell.openExternal(release.html_url);
           }
         } catch (err) {
-          if (manual) await info('Não foi possível procurar atualizações.', (err as Error).message);
-          else console.error('Verificação de atualização falhou:', (err as Error).message);
+          console.error('Verificação de atualização falhou:', (err as Error).message);
+          if (manual) {
+            const { message, detail } = describeUpdateError((err as Error).message);
+            await info(message, detail);
+          }
         }
       },
       install() {
