@@ -98,6 +98,11 @@ function stashMenu(ev: MouseEvent, index: number) {
           <button class="btn sm" @click="showAll">Todos</button>
           <button class="btn sm" title="Dividir o espaço igualmente" @click="equalize">Igualar</button>
         </div>
+        <div v-if="!IS_STATIC && state.summary.repos.length > 1" class="side-actions">
+          <button class="btn sm" title="A mesma mensagem de commit em vários repositórios (Ctrl+Shift+Enter)" @click="openDialog('workspace-commit')">
+            Commit no workspace…
+          </button>
+        </div>
         <label class="side-item side-flag" title="Um painel extra com os commits de todos os repositórios visíveis, por data">
           <input type="checkbox" :checked="state.timeline" @change="setTimeline(($event.target as HTMLInputElement).checked)">
           <span class="name">Timeline unificada</span>

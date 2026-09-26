@@ -756,3 +756,27 @@ a { color: var(--accent); }
 .diff-body .dl-gut { display: inline-block; width: 22px; color: var(--muted); user-select: none; }
 .diff-body span.chosen .dl-gut { color: var(--accent); }
 .diff-body .dl-hunk { float: right; margin-right: 8px; height: 18px; font-family: var(--font); }
+
+/* ---------------------------------------------------------------- commit no workspace */
+
+.wc-list, .wc-results { list-style: none; margin: 4px 0 12px; padding: 0; border: 1px solid var(--line); border-radius: 8px; max-height: 260px; overflow-y: auto; }
+.wc-list li, .wc-results li { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.wc-list li:last-child, .wc-results li:last-child { border-bottom: 0; }
+.wc-list li.off { opacity: .55; }
+.wc-repo { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; cursor: pointer; }
+.wc-repo input, .wc-all input { accent-color: var(--c, var(--accent)); margin: 0; }
+.wc-repo b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wc-counts { display: inline-flex; gap: 5px; font-size: 11.5px; }
+.wc-all { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); white-space: nowrap; cursor: pointer; }
+.wc-warn { font-size: 11.5px; color: var(--warn); white-space: nowrap; }
+.form .field .over { color: var(--warn); }
+.wc-results .wc-icon { width: 14px; font-weight: 700; text-align: center; }
+.wc-results li.ok .wc-icon { color: var(--ok); }
+.wc-results li.error .wc-icon { color: var(--danger); }
+.wc-results li.skipped .wc-icon { color: var(--muted); }
+.wc-results li .faint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.wc-results code { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.wc-push { font-size: 11.5px; white-space: nowrap; color: var(--muted); }
+.wc-push.enviado { color: var(--ok); }
+.wc-push.falhou { color: var(--danger); }
+.wc-branch { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; }

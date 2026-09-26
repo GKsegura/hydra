@@ -6,6 +6,7 @@ export type {
 } from '../../src/git/index.ts';
 export type { GitHubRepo, PullRequest } from '../../src/github.ts';
 export type { JobEvent } from '../../src/jobs.ts';
+export type { RepoResult } from '../../src/multi.ts';
 
 import type { Branch, Operation, Remote, Stash } from '../../src/git/index.ts';
 import type { PullRequest } from '../../src/github.ts';

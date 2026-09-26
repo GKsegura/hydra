@@ -49,6 +49,7 @@ function runAction(action: string) {
     case 'open-explorer': return needsRepo((r) => openIn(r, 'explorer'));
     case 'open-terminal': return needsRepo((r) => openIn(r, 'terminal'));
     case 'terminal': return state.summary ? toggleTerminal() : undefined;
+    case 'workspace-commit': return state.summary ? openDialog('workspace-commit') : undefined;
     case 'open-github': return needsRepo(openOnGitHub);
   }
 }
@@ -61,6 +62,10 @@ function onKey(ev: KeyboardEvent) {
   if (ctrl && ev.code === 'Backquote' && !IS_STATIC) {
     ev.preventDefault();
     return runAction('terminal');
+  }
+  if (ctrl && ev.shiftKey && ev.key === 'Enter' && !IS_STATIC) {
+    ev.preventDefault();
+    return runAction('workspace-commit');
   }
   // Dentro do terminal integrado, as teclas são do shell (Ctrl+F, F5, setas…).
   if ((ev.target as HTMLElement).closest?.('.xterm')) return;

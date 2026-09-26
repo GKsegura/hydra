@@ -19,6 +19,7 @@ import { defaultRecentsFile, Recents } from './recents.ts';
 import { appRoutes } from './routes/app.ts';
 import { repoRoutes } from './routes/repo.ts';
 import { terminalRoutes } from './routes/terminal.ts';
+import { workspaceRoutes } from './routes/workspace.ts';
 import { memoryStore, type SecretStore } from './secrets.ts';
 import { Terminals } from './terminal.ts';
 import { VERSION } from './version.ts';
@@ -242,6 +243,7 @@ export function createApp(
 
   api.use(appRoutes({ jobs, github }));
   api.use(terminalRoutes({ session, terminals }));
+  api.use(workspaceRoutes({ session }));
   api.use('/repos/:id', repoRoutes({ session, jobs, github, trash: opts.trash }));
 
   api.use((_req, _res, next) => next(new HttpError(404, 'Rota não encontrada')));

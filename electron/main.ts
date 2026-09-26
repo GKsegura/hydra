@@ -152,6 +152,7 @@ function buildMenu() {
         { label: 'Nova branch…', accelerator: 'CmdOrCtrl+Shift+N', registerAccelerator: false, click: () => menuAction('new-branch') },
         { label: 'Merge na branch atual…', click: () => menuAction('merge') },
         { label: 'Guardar alterações (stash)', click: () => menuAction('stash') },
+        { label: 'Commit no workspace…', accelerator: 'CmdOrCtrl+Shift+Enter', registerAccelerator: false, click: () => menuAction('workspace-commit') },
         { type: 'separator' },
         { label: 'Abrir no VS Code', click: () => menuAction('open-editor') },
         { label: 'Mostrar no Explorer', click: () => menuAction('open-explorer') },

@@ -1,7 +1,7 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 import type {
   AppInfo, Boot, BranchInfo, CommitDetail, ConflictFile, GitHubInfo, GitHubRepo, JobEvent, MergePreview, MergeResult,
-  OperationInfo, Progress, PullsInfo, RepoGraph, RepoStatus, TerminalInfo, WorkspaceSummary,
+  OperationInfo, Progress, PullsInfo, RepoGraph, RepoResult, RepoStatus, TerminalInfo, WorkspaceSummary,
 } from './types.ts';
 
 // No modo servidor o hydra injeta o token no HTML; no `npm run dev` (Vite) ele vem por ?t= na URL.
@@ -73,6 +73,8 @@ export const api = {
   openWorkspace: (path: string) => post<AppInfo>('/workspace/open', { path }),
   closeWorkspace: () => post<AppInfo>('/workspace/close'),
   removeRecent: (path: string) => post<AppInfo>('/recents/remove', { path }),
+  workspaceCommit: (repos: { id: string; stageAll: boolean }[], summary: string, body: string) =>
+    post<{ results: RepoResult[] }>('/workspace/commit', { repos, summary, body }),
   workspace: async (): Promise<WorkspaceSummary> => (IS_STATIC ? BOOT.data!.summary : call('/workspace')),
 
   // leitura
