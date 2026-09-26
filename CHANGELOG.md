@@ -2,6 +2,14 @@
 
 Este arquivo é mantido automaticamente pelo [semantic-release](https://github.com/semantic-release/semantic-release) a partir dos commits convencionais (`feat:`, `fix:`, …) na branch `main`.
 
+# [1.4.0](https://github.com/GKsegura/hydra/compare/v1.3.0...v1.4.0) (2026-09-26)
+
+
+### Features
+
+* atualiza os repositórios em tempo real ([2ae00fb](https://github.com/GKsegura/hydra/commit/2ae00fb2536269a2647f08a800b9f1c52552242a))
+* **desktop:** mantém o menu do app sempre visível ([c6fea18](https://github.com/GKsegura/hydra/commit/c6fea183dec9a803dc6dddaf89bf7d501d3ebdd3))
+
 # [1.3.0](https://github.com/GKsegura/hydra/compare/v1.2.0...v1.3.0) (2026-09-26)
 
 
