@@ -1,7 +1,7 @@
 # Hydra — © 2026 José Segura (GKsegura) · MIT
 # test    → type-check, testes e build em todo push/PR
 # release → na main, o semantic-release gera tag vX.Y.Z, CHANGELOG e GitHub Release (commits convencionais)
-# desktop → se saiu versão nova, gera o .exe portátil no Windows e anexa na Release
+# desktop → se saiu versão nova, gera o instalador (com atualização automática) e o .exe portátil no Windows e anexa na Release
 name: CI
 
 on:
@@ -79,8 +79,12 @@ jobs:
       - run: npm ci
       - run: npm run desktop:build
 
-      - name: Anexa o .exe na Release
+      # Instalador + blockmap + latest.yml: é o que o electron-updater dos apps instalados lê para se atualizar.
+      - name: Anexa instalador, portátil e latest.yml na Release
         shell: bash
-        run: gh release upload "${{ needs.release.outputs.tag }}" release/Hydra-*-portable.exe --clobber
+        run: |
+          gh release upload "${{ needs.release.outputs.tag }}" \
+            release/Hydra-Setup-*.exe release/Hydra-Setup-*.exe.blockmap release/latest.yml \
+            release/Hydra-*-portable.exe --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
