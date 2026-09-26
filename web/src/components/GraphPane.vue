@@ -3,6 +3,7 @@
 import { computed, ref, watch } from 'vue';
 import { IS_STATIC } from '../api.ts';
 import { commitMenu, discard, openDialog, openIn, openMenu, openOnGitHub } from '../actions.ts';
+import { openTerminal, terminalAvailable } from '../terminal.ts';
 import { edgePath, laneX, rowY } from '../graph.ts';
 import { headRow, hideRepo, matches, repoById, repoColor, selectCommit, selectDefault, selectWip, state, statusOf } from '../store.ts';
 import { ago, COL, COLORS, fullDate, PAD, ROW } from '../utils.ts';
@@ -83,7 +84,13 @@ function repoMenu(ev: MouseEvent) {
     { separator: true, label: '' },
     { label: 'Abrir no VS Code', run: () => openIn(id, 'editor') },
     { label: 'Mostrar no Explorer', run: () => openIn(id, 'explorer') },
-    { label: 'Abrir no terminal', run: () => openIn(id, 'terminal') },
+    {
+      label: 'Terminal integrado',
+      hint: terminalAvailable() ? 'Ctrl+`' : 'indisponível',
+      run: () => openTerminal(id),
+      disabled: !terminalAvailable(),
+    },
+    { label: 'Abrir terminal externo', run: () => openIn(id, 'terminal') },
     { label: 'Ver no GitHub', run: () => openOnGitHub(id), disabled: !s?.remotes.length },
     { label: 'Publicar no GitHub…', run: () => openDialog('publish', { repoId: id }), disabled: !!s?.remotes.length },
     { separator: true, label: '' },

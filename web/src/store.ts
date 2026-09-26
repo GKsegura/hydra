@@ -2,7 +2,8 @@
 import { reactive } from 'vue';
 import { api, desktop, IS_STATIC } from './api.ts';
 import type {
-  AppInfo, BranchInfo, Commit, ConflictFile, GitHubInfo, OperationInfo, PullsInfo, RepoGraph, RepoStatus, Selection, WorkspaceSummary,
+  AppInfo, BranchInfo, Commit, ConflictFile, GitHubInfo, OperationInfo, PullsInfo, RepoGraph, RepoStatus, Selection, TerminalInfo,
+  WorkspaceSummary,
 } from './types.ts';
 import { COLORS } from './utils.ts';
 
@@ -41,7 +42,22 @@ export const state = reactive({
   amend: {} as Record<string, boolean>, // "emendar último commit" marcado no painel de commit
   pulls: {} as Record<string, PullsInfo>,
   github: null as GitHubInfo | null,
+
+  // ---- terminal integrado (dock embaixo dos grafos)
+  terminal: {
+    info: null as TerminalInfo | null,
+    open: false,
+    height: 280,
+    tabs: [] as TerminalTab[], // um shell por aba, sempre na pasta de um repo do workspace
+    active: null as string | null,
+  },
 });
+
+export interface TerminalTab {
+  id: string;
+  repoId: string;
+  shell: string;
+}
 
 export interface Dialog {
   kind: string;
@@ -281,6 +297,9 @@ function resetWorkspaceState() {
   state.diff = null;
   state.filter = '';
   state.scroll = null;
+  // O servidor encerra os shells do workspace anterior ao trocar/fechar.
+  state.terminal.tabs = [];
+  state.terminal.active = null;
 }
 
 export async function openWorkspace(path: string): Promise<boolean> {

@@ -107,11 +107,18 @@ async function main(): Promise<void> {
     return;
   }
 
-  const { url } = await startServer(ws ? (ws.source ?? null) : null, {
+  const { url, terminals } = await startServer(ws ? (ws.source ?? null) : null, {
     port: Number(values.port) || 4711,
     max,
     secrets: { get: cliToken, set: async () => {}, clear: async () => {}, persistent: false },
   });
+  // Ctrl+C: encerra os shells do terminal integrado junto com o servidor.
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    process.once(signal, () => {
+      terminals.killAll();
+      process.exit(0);
+    });
+  }
   console.log(`\n  Abrindo ${url}\n  Ctrl+C para encerrar.\n`);
   if (!values['no-open']) openInBrowser(url);
 }

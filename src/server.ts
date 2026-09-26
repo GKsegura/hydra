@@ -7,6 +7,7 @@ import type { Server } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express, { type NextFunction, type Request, type Response } from 'express';
+import { WebSocketServer } from 'ws';
 import { repoGraph, workspaceSummary } from './data.ts';
 import {
   commit, getCommitDetail, getCommitFileDiff, getStatus, getWorkingDiff, GitError, stage, unstage,
@@ -17,7 +18,9 @@ import { Jobs } from './jobs.ts';
 import { defaultRecentsFile, Recents } from './recents.ts';
 import { appRoutes } from './routes/app.ts';
 import { repoRoutes } from './routes/repo.ts';
+import { terminalRoutes } from './routes/terminal.ts';
 import { memoryStore, type SecretStore } from './secrets.ts';
+import { Terminals } from './terminal.ts';
 import { VERSION } from './version.ts';
 import { loadWorkspace, type Repo, type Workspace } from './workspace.ts';
 
@@ -69,6 +72,8 @@ export class Session {
   ws: Workspace | null = null;
   private repos = new Map<string, Repo>();
   recents: Recents;
+  /** Chamado quando o workspace troca ou fecha (ex.: encerrar os terminais do workspace anterior). */
+  onReset: (() => void) | null = null;
 
   constructor(recentsFile: string) {
     this.recents = new Recents(recentsFile);
@@ -78,6 +83,7 @@ export class Session {
   open(target: string): Workspace {
     const ws = loadWorkspace(target);
     if (!ws.repos.length) throw new HttpError(400, 'Nenhum repositório git encontrado nesse caminho.');
+    this.onReset?.();
     this.ws = ws;
     this.repos = new Map(ws.repos.map((r) => [r.id, r]));
     this.recents.add({ path: ws.source ?? target, name: ws.name });
@@ -85,6 +91,7 @@ export class Session {
   }
 
   close() {
+    this.onReset?.();
     this.ws = null;
     this.repos.clear();
   }
@@ -102,7 +109,7 @@ export class Session {
   }
 }
 
-export function createApp(session: Session, opts: ServerOptions, token: string, jobs: Jobs, github: GitHubSession) {
+export function createApp(session: Session, opts: ServerOptions, token: string, jobs: Jobs, github: GitHubSession, terminals: Terminals) {
   const repoOf = (req: Request): Repo => session.repo(String(req.params.id));
 
   const app = express();
@@ -110,8 +117,7 @@ export function createApp(session: Session, opts: ServerOptions, token: string, 
 
   // Proteção contra DNS rebinding: só respondemos para o host local.
   app.use((req, res, next) => {
-    const host = (req.headers.host ?? '').replace(/:\d+$/, '');
-    if (host !== '127.0.0.1' && host !== 'localhost') return void res.status(403).send('Host não permitido');
+    if (!localHost(req.headers.host)) return void res.status(403).send('Host não permitido');
     res.setHeader('cache-control', 'no-store');
     next();
   });
@@ -216,6 +222,7 @@ export function createApp(session: Session, opts: ServerOptions, token: string, 
   });
 
   api.use(appRoutes({ jobs, github }));
+  api.use(terminalRoutes({ session, terminals }));
   api.use('/repos/:id', repoRoutes({ session, jobs, github, trash: opts.trash }));
 
   api.use((_req, _res, next) => next(new HttpError(404, 'Rota não encontrada')));
@@ -238,6 +245,42 @@ export function createApp(session: Session, opts: ServerOptions, token: string, 
   return app;
 }
 
+/** Host (ou Origin sem o protocolo) apontando para a máquina local, em qualquer porta. */
+function localHost(host: string | undefined): boolean {
+  const name = (host ?? '').replace(/:\d+$/, '');
+  return name === '127.0.0.1' || name === 'localhost';
+}
+
+/**
+ * Terminal integrado: WebSocket em /api/terminals/:id/ws?t=<token>. O WebSocket não envia headers customizados,
+ * então o token vai na URL (como no stream de progresso), e o Origin precisa ser a própria interface local.
+ */
+function attachTerminalSockets(server: Server, token: string, terminals: Terminals) {
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
+  server.on('upgrade', (req, socket, head) => {
+    const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+    const id = /^\/api\/terminals\/([0-9a-f]{16})\/ws$/.exec(url.pathname)?.[1];
+    const origin = req.headers.origin ?? '';
+    const allowed = !!id && url.searchParams.get('t') === token && localHost(req.headers.host)
+      && /^https?:\/\//.test(origin) && localHost(origin.replace(/^https?:\/\//, ''));
+    if (!allowed || !terminals.has(id)) {
+      socket.end(allowed ? 'HTTP/1.1 404 Not Found\r\n\r\n' : 'HTTP/1.1 403 Forbidden\r\n\r\n');
+      return;
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      const link = terminals.attach(id, {
+        send: (data) => {
+          if (ws.readyState === ws.OPEN) ws.send(data);
+        },
+        close: (code, reason) => ws.close(code, reason),
+      });
+      if (!link) return void ws.close(4004, 'Terminal encerrado');
+      ws.on('message', (data) => link.message(data.toString()));
+      ws.on('close', link.detach);
+    });
+  });
+}
+
 export interface RunningServer {
   url: string;
   token: string;
@@ -245,6 +288,7 @@ export interface RunningServer {
   server: Server;
   session: Session;
   github: GitHubSession;
+  terminals: Terminals;
 }
 
 /** Sobe o servidor. Sem `target`, o app abre na tela inicial. Porta 0 = qualquer livre. */
@@ -255,14 +299,19 @@ export async function startServer(target: string | null, opts: ServerOptions): P
   const jobs = new Jobs();
   const github = new GitHubSession(opts.secrets ?? memoryStore());
   await github.init();
-  const app = createApp(session, opts, token, jobs, github);
+  const terminals = new Terminals();
+  await terminals.init();
+  session.onReset = () => terminals.killAll();
+  const app = createApp(session, opts, token, jobs, github, terminals);
 
   return new Promise((resolve, reject) => {
     const tryListen = (port: number) => {
       const server = app.listen(port, '127.0.0.1');
       server.once('listening', () => {
         const real = (server.address() as AddressInfo).port;
-        resolve({ url: `http://127.0.0.1:${real}/?t=${token}`, token, port: real, server, session, github });
+        attachTerminalSockets(server, token, terminals);
+        server.on('close', () => terminals.killAll());
+        resolve({ url: `http://127.0.0.1:${real}/?t=${token}`, token, port: real, server, session, github, terminals });
       });
       server.once('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EADDRINUSE' && port !== 0 && port < opts.port + 20) tryListen(port + 1);

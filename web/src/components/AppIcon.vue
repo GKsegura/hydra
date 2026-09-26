@@ -1,6 +1,6 @@
 <!-- Hydra — © 2026 José Segura (GKsegura) · MIT -->
 <script setup lang="ts">
-defineProps<{ name: 'branch' | 'local' | 'remote' | 'tag' | 'check' | 'copy' | 'search' | 'refresh'; size?: number }>();
+defineProps<{ name: 'branch' | 'local' | 'remote' | 'tag' | 'check' | 'copy' | 'search' | 'refresh' | 'terminal'; size?: number }>();
 </script>
 
 <template>
@@ -19,5 +19,6 @@ defineProps<{ name: 'branch' | 'local' | 'remote' | 'tag' | 'check' | 'copy' | '
     </template>
     <template v-else-if="name === 'search'"><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5 14 14" /></template>
     <path v-else-if="name === 'refresh'" d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" />
+    <template v-else-if="name === 'terminal'"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" /><path d="m4.5 6.5 2 2-2 2M8.5 10.5h3" /></template>
   </svg>
 </template>

@@ -143,7 +143,8 @@ function buildMenu() {
         { type: 'separator' },
         { label: 'Abrir no VS Code', click: () => menuAction('open-editor') },
         { label: 'Mostrar no Explorer', click: () => menuAction('open-explorer') },
-        { label: 'Abrir no terminal', click: () => menuAction('open-terminal') },
+        { label: 'Terminal integrado', accelerator: 'CmdOrCtrl+`', registerAccelerator: false, click: () => menuAction('terminal') },
+        { label: 'Abrir terminal externo', click: () => menuAction('open-terminal') },
         { label: 'Ver no GitHub', click: () => menuAction('open-github') },
       ],
     },
@@ -275,6 +276,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('window-all-closed', () => {
+    server?.terminals.killAll();
     server?.server.close();
     app.quit();
   });

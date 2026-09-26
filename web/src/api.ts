@@ -1,7 +1,7 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 import type {
   AppInfo, Boot, BranchInfo, CommitDetail, ConflictFile, GitHubInfo, GitHubRepo, JobEvent, MergePreview, MergeResult,
-  OperationInfo, Progress, PullsInfo, RepoGraph, RepoStatus, WorkspaceSummary,
+  OperationInfo, Progress, PullsInfo, RepoGraph, RepoStatus, TerminalInfo, WorkspaceSummary,
 } from './types.ts';
 
 // No modo servidor o hydra injeta o token no HTML; no `npm run dev` (Vite) ele vem por ?t= na URL.
@@ -58,6 +58,11 @@ export function followJob<T = unknown>(jobId: string, onProgress: (p: Progress) 
 
 const enc = encodeURIComponent;
 const repo = (id: string) => `/repos/${enc(id)}`;
+
+/** WebSocket de um terminal. Como no stream de progresso, o token vai na URL (o WebSocket não envia headers). */
+export function terminalSocketUrl(tid: string): string {
+  return `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/terminals/${enc(tid)}/ws?t=${enc(BOOT.token ?? '')}`;
+}
 
 export const api = {
   // app e workspaces
@@ -125,6 +130,11 @@ export const api = {
 
   // fora do Hydra
   openIn: (id: string, target: 'editor' | 'explorer' | 'terminal') => post(`${repo(id)}/open`, { target }),
+
+  // terminal integrado (a entrada e a saída passam pelo WebSocket: terminalSocketUrl)
+  terminalInfo: () => call<TerminalInfo>('/terminal'),
+  openTerminal: (id: string, cols: number, rows: number) => post<{ id: string; shell: string }>(`${repo(id)}/terminals`, { cols, rows }),
+  closeTerminal: (tid: string) => call(`/terminals/${enc(tid)}`, { method: 'DELETE' }),
 
   // clonar / criar
   templates: () => call<{ gitignore: string[] }>('/repos/templates'),

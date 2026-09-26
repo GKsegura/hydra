@@ -234,7 +234,32 @@ code, .mono { font-family: var(--mono); font-size: 12px; }
 
 /* ---------------------------------------------------------------- grafo */
 
-.center { position: relative; min-width: 0; min-height: 0; }
+.center { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.center-main { position: relative; flex: 1; min-height: 0; }
+
+/* ---------------------------------------------------------------- terminal integrado */
+
+.term-dock { position: relative; flex: none; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--line); background: var(--bg); }
+.term-resize { position: absolute; top: -4px; left: 0; right: 0; height: 7px; cursor: row-resize; z-index: 6; }
+.term-resize:hover, .term-resize.drag { background: var(--accent); opacity: .6; }
+body.resizing-v { cursor: row-resize; user-select: none; }
+.term-bar { flex: none; display: flex; align-items: center; gap: 4px; height: 32px; padding: 0 6px 0 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.term-icon { color: var(--muted); flex: none; }
+.term-tabs { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.term-tab {
+  display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 6px 0 10px; border: 0; border-radius: 5px;
+  background: none; color: var(--muted); font-size: 12px; cursor: pointer; white-space: nowrap; flex: none;
+}
+.term-tab:hover { background: var(--panel-2); color: var(--text); }
+.term-tab.active { background: var(--accent-soft); color: var(--text); }
+.term-tab .x { width: 18px; height: 18px; display: inline-grid; place-items: center; border-radius: 4px; font-size: 11px; opacity: .6; }
+.term-tab .x:hover { background: var(--panel-2); opacity: 1; }
+.term-bar .spacer { flex: 1; }
+.term-shell { color: var(--faint); font-size: 11px; margin-right: 4px; }
+.term-body { position: relative; flex: 1; min-height: 0; }
+.term-view { position: absolute; inset: 4px 0 0 8px; }
+.term-view .xterm { height: 100%; }
+.term-view .xterm-viewport { background: var(--bg) !important; }
 
 .panes { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; }
 .panes-empty { margin: auto; text-align: center; color: var(--muted); padding: 40px; }

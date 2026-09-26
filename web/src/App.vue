@@ -11,10 +11,12 @@ import DiffViewer from './components/DiffViewer.vue';
 import PanesView from './components/PanesView.vue';
 import RepoCards from './components/RepoCards.vue';
 import SideBar from './components/SideBar.vue';
+import TerminalDock from './components/TerminalDock.vue';
 import TopBar from './components/TopBar.vue';
 import WelcomeScreen from './components/WelcomeScreen.vue';
 import WipPanel from './components/WipPanel.vue';
 import { closeDiff, closeWorkspace, hasWip, moveSelection, openWorkspace, pickWorkspace, refresh, state } from './store.ts';
+import { loadTerminalInfo, toggleTerminal } from './terminal.ts';
 
 const topbar = ref<InstanceType<typeof TopBar>>();
 
@@ -46,6 +48,7 @@ function runAction(action: string) {
     case 'open-editor': return needsRepo((r) => openIn(r, 'editor'));
     case 'open-explorer': return needsRepo((r) => openIn(r, 'explorer'));
     case 'open-terminal': return needsRepo((r) => openIn(r, 'terminal'));
+    case 'terminal': return state.summary ? toggleTerminal() : undefined;
     case 'open-github': return needsRepo(openOnGitHub);
   }
 }
@@ -55,6 +58,12 @@ function onKey(ev: KeyboardEvent) {
   const ctrl = ev.ctrlKey || ev.metaKey;
   const key = ev.key.toLowerCase();
   if (state.dialog) return; // o diálogo aberto cuida do teclado
+  if (ctrl && ev.code === 'Backquote' && !IS_STATIC) {
+    ev.preventDefault();
+    return runAction('terminal');
+  }
+  // Dentro do terminal integrado, as teclas são do shell (Ctrl+F, F5, setas…).
+  if ((ev.target as HTMLElement).closest?.('.xterm')) return;
   if (ctrl && !IS_STATIC) {
     const shortcut =
       ev.shiftKey && key === 'o' ? 'clone' : ev.shiftKey && key === 'n' ? 'new-branch' : ev.shiftKey && key === 'p' ? 'push'
@@ -116,7 +125,10 @@ onMounted(() => {
   window.addEventListener('focus', onFocus);
   desktop?.onMenu(runAction);
   refresh();
-  if (!IS_STATIC) loadGitHub();
+  if (!IS_STATIC) {
+    loadGitHub();
+    loadTerminalInfo();
+  }
 });
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey);
@@ -133,9 +145,12 @@ onBeforeUnmount(() => {
       <main class="main">
         <SideBar />
         <section class="center">
-          <PanesView />
-          <ConflictResolver v-if="state.conflict" />
-          <DiffViewer v-else />
+          <div class="center-main">
+            <PanesView />
+            <ConflictResolver v-if="state.conflict" />
+            <DiffViewer v-else />
+          </div>
+          <TerminalDock v-if="state.terminal.tabs.length" />
         </section>
         <aside class="detail">
           <WipPanel v-if="state.selected?.type === 'wip'" :key="`wip:${state.selected.repoId}`" :repo-id="state.selected.repoId" />

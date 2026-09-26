@@ -16,13 +16,15 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     cssCodeSplit: false,
+    // Bundle único de propósito (ver abaixo); o xterm.js do terminal integrado sozinho passa de 300 kB.
+    chunkSizeWarningLimit: 800,
     rollupOptions: {
       // Nomes fixos e um único bundle: facilita embutir tudo no HTML do modo --out.
       output: { entryFileNames: 'assets/app.js', assetFileNames: 'assets/app[extname]', inlineDynamicImports: true },
     },
   },
   server: {
-    // `npm run dev`: a API continua sendo o hydra rodando na 4711.
-    proxy: { '/api': { target: 'http://127.0.0.1:4711', changeOrigin: true } },
+    // `npm run dev`: a API (e o WebSocket do terminal) continua sendo o hydra rodando na 4711.
+    proxy: { '/api': { target: 'http://127.0.0.1:4711', changeOrigin: true, ws: true } },
   },
 });

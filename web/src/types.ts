@@ -74,7 +74,13 @@ export interface Boot {
   data?: { summary: WorkspaceSummary; graphs: Record<string, RepoGraph> };
 }
 
-export type Selection = { repoId: string; type: 'commit'; hash: string } | { repoId: string; type: 'wip' };
+/** Terminal integrado: disponível se o node-pty estiver instalado; `shell` é o nome exibido (ex.: "Git Bash"). */
+export interface TerminalInfo {
+  available: boolean;
+  shell: string | null;
+}
+
+export type Selection ={ repoId: string; type: 'commit'; hash: string } | { repoId: string; type: 'wip' };
 
 declare global {
   interface Window {
