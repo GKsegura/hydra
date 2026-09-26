@@ -216,7 +216,7 @@ function createWindow(url: string) {
     minHeight: 560,
     backgroundColor: '#15171c',
     title: 'Hydra',
-    autoHideMenuBar: true,
+    autoHideMenuBar: false, // menu sempre visível (Arquivo, Repositório, Exibir, Ajuda → Procurar atualizações…)
     show: false,
     icon: app.isPackaged ? undefined : path.join(app.getAppPath(), 'build', 'icon.png'),
     webPreferences: {
