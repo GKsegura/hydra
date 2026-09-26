@@ -33,7 +33,11 @@ let updater: Updater | null = null;
 
 /** Caminho passado na linha de comando (ex.: "Hydra.exe C:\projeto\x.code-workspace"). */
 function pathFromArgs(argv: string[]): string | null {
-  const args = argv.slice(app.isPackaged ? 1 : 2).filter((a) => !a.startsWith('-'));
+  // Em desenvolvimento (`electron . <caminho>`) o próprio app aparece nos argumentos, e nem sempre na mesma posição
+  // (ferramentas como o Playwright injetam flags antes): ignoramos o caminho do app onde quer que ele esteja.
+  const norm = (p: string) => path.resolve(p).toLowerCase(); // Windows: "c:\" e "C:\" são a mesma pasta
+  const appPath = app.isPackaged ? null : norm(app.getAppPath());
+  const args = argv.slice(1).filter((a) => !a.startsWith('-') && norm(a) !== appPath);
   const found = args.find((a) => existsSync(a));
   return found ? path.resolve(found) : null;
 }
