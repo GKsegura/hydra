@@ -8,7 +8,7 @@
 
 Funciona com **workspaces** (vários repositórios, como o `.code-workspace` do VS Code) e com **projetos normais** (um repositório só). Dá pra usar de dois jeitos, com a mesma interface:
 
-- **App desktop**: um `Hydra-<versão>-portable.exe` que roda sem instalar.
+- **App desktop**: o instalador `Hydra-Setup-<versão>.exe`, que **se atualiza sozinho**, ou o `Hydra-<versão>-portable.exe`, que roda sem instalar.
 - **CLI**: `hydra <caminho>` no terminal abre a interface no navegador.
 
 **Primeira vez?** Veja a [Instalação](#instalação) e depois siga o [Tutorial](#tutorial).
@@ -143,7 +143,8 @@ As mesmas tecnologias do dia a dia (Vue 3 + TypeScript no front, Node.js + Expre
 | API | **Express 5** | Rotas simples, erros assíncronos tratados nativamente; operações longas com **Server-Sent Events** |
 | Front | **Vue 3 + TypeScript** (`<script setup>`, `reactive`) | Componentes pequenos e uma store reativa sem dependência extra |
 | Build do front | **Vite** | Build rápido; gera um único `app.js` + `app.css` |
-| App desktop | **Electron** + **electron-builder** | Reaproveita o mesmo servidor e a mesma interface; gera o `.exe` portátil |
+| App desktop | **Electron** + **electron-builder** | Reaproveita o mesmo servidor e a mesma interface; gera o instalador (NSIS) e o `.exe` portátil |
+| Atualizações | **electron-updater** | Baixa a versão nova das Releases do GitHub, confere o sha512 e instala ao reiniciar |
 | Build do desktop | **esbuild** | Empacota o processo principal do Electron (e o back-end) |
 | Testes | **Vitest** | Testes do git contra repositórios temporários (inclusive um "remoto" local) |
 | Release | **semantic-release** + **GitHub Actions** | Versão, tag, CHANGELOG e Release automáticos a partir dos commits, com o `.exe` anexado |
@@ -166,14 +167,38 @@ Para conferir: `git --version` e `node --version`.
 
 ## Instalação
 
-### App desktop (.exe portátil)
+### App desktop: instalador (recomendado)
 
-Baixe o **`Hydra-<versão>-portable.exe`** (~100 MB) da última versão em **[Releases](https://github.com/GKsegura/hydra/releases/latest)**. É um arquivo só, que roda sem instalar:
+Baixe o **`Hydra-Setup-<versão>.exe`** da última versão em **[Releases](https://github.com/GKsegura/hydra/releases/latest)** e dê dois cliques. Ele instala na hora, sem assistente e **sem pedir administrador**. O app vai para `%LOCALAPPDATA%\Programs\hydra-git`, com atalhos no Menu Iniciar e na Área de Trabalho.
+
+Depois disso, o Hydra **se atualiza sozinho** (veja [Atualizações](#atualizações)). Para desinstalar, use *Configurações → Aplicativos → Hydra*. Seus recentes e configurações são preservados.
+
+### App desktop: portátil
+
+Prefere não instalar? Baixe o **`Hydra-<versão>-portable.exe`** (~100 MB). É um arquivo só:
 
 - copie para onde quiser (Área de Trabalho, `C:\Ferramentas`, pendrive…) e dê dois cliques;
 - para ter no Menu Iniciar ou na barra de tarefas, crie um atalho para o `.exe` (botão direito → *Criar atalho*, ou *Fixar na barra de tarefas* com o app aberto).
 
-> ⚠️ **Aviso do Windows (SmartScreen).** O `.exe` não é assinado digitalmente, então na primeira vez o Windows pode mostrar *"O Windows protegeu o computador"*. Clique em **Mais informações → Executar assim mesmo**.
+O portátil **não se atualiza sozinho**: quando sai uma versão nova, ele avisa no topo da janela e abre a página de download.
+
+> ⚠️ **Aviso do Windows (SmartScreen).** O instalador e o `.exe` não são assinados digitalmente, então na primeira vez o Windows pode mostrar *"O Windows protegeu o computador"*. Clique em **Mais informações → Executar assim mesmo**. As atualizações automáticas do instalador não passam por esse aviso de novo.
+
+### Atualizações
+
+**No instalador**, a atualização é automática:
+
+1. Ao abrir, e depois a cada 4 horas, o Hydra verifica se há versão nova nas Releases do GitHub.
+2. Se houver, ele baixa em segundo plano. No topo da janela aparece *"Baixando Hydra 1.3.0… 45%"*.
+3. Terminado o download, aparece **"Hydra 1.3.0 pronto · Reiniciar agora · Depois"**:
+   - **Reiniciar agora** fecha o Hydra, instala e abre de novo já na versão nova (leva alguns segundos);
+   - **Depois** esconde o aviso, e a atualização é instalada na próxima vez que você fechar o Hydra.
+
+Para verificar na hora: menu **Ajuda → Procurar atualizações…** (tecla `Alt` mostra o menu). **Ajuda → Notas da versão** abre o que mudou na versão atual.
+
+**No portátil**, aparece **"Hydra 1.3.0 disponível · Baixar"**, que abre a página da Release.
+
+> Está na **1.0 ou 1.1 portátil**? Essas versões ainda não sabiam se atualizar. Baixe o instalador **uma vez**; dali em diante, é automático.
 
 ### A partir do código-fonte (CLI ou gerar o .exe)
 
@@ -188,7 +213,7 @@ O `npm install` também já compila a interface (script `prepare`).
 Para gerar o `.exe` localmente (sai em `release\`) ou testar o app sem empacotar:
 
 ```bash
-npm run desktop:build   # gera release\Hydra-<versão>-portable.exe
+npm run desktop:build   # gera release\Hydra-Setup-<versão>.exe e release\Hydra-<versão>-portable.exe
 npm run desktop         # abre o app direto, sem gerar o .exe
 ```
 
@@ -233,12 +258,12 @@ O Client ID é público (vai no app), mas ele sozinho não dá acesso a nada: ca
 
 ### App desktop
 
-Abra o `Hydra-<versão>-portable.exe`. Na primeira vez aparece a **tela inicial**, com os cartões **Clonar repositório**, **Novo repositório**, **Abrir repositório** e **Abrir workspace**. Também dá pra **colar um caminho** ou **arrastar** a pasta/arquivo para a janela, e da próxima vez o projeto aparece em **Recentes**.
+Abra o Hydra pelo Menu Iniciar (instalador) ou pelo `Hydra-<versão>-portable.exe`. Na primeira vez aparece a **tela inicial**, com os cartões **Clonar repositório**, **Novo repositório**, **Abrir repositório** e **Abrir workspace**. Também dá pra **colar um caminho** ou **arrastar** a pasta/arquivo para a janela, e da próxima vez o projeto aparece em **Recentes**.
 
 O `.exe` também aceita o caminho como parâmetro, útil pra criar atalhos que já abrem um projeto:
 
 ```bash
-Hydra-<versão>-portable.exe "C:\Users\José\Documents\GitHub\CRONOS\cronos.code-workspace"
+"%LOCALAPPDATA%\Programs\hydra-git\Hydra.exe" "C:\Users\José\Documents\GitHub\CRONOS\cronos.code-workspace"
 ```
 
 ### CLI
@@ -607,6 +632,7 @@ Nada fica rodando em segundo plano. O Hydra só altera seus repositórios quando
 | *"Esse commit já está no remoto"* ao desfazer | Commits publicados não são desfeitos para não reescrever o histórico: use **Reverter** |
 | `hydra` não é reconhecido como comando | Rode `npm link` na pasta do hydra e **abra um terminal novo**. Alternativa: `npm start -- <caminho>` |
 | Atualizei o Hydra, mas a tela continua igual | Reinicie o Hydra e recarregue com **Ctrl+R**. O `F5` do Hydra só atualiza os dados |
+| O aviso de atualização não aparece | Confira em **Ajuda → Procurar atualizações…**. Logo depois de uma Release sair, o instalador leva alguns minutos para ser anexado; o Hydra tenta de novo a cada 4 horas |
 | *"Token inválido"* / *"Abra pelo link mostrado no terminal"* | O Hydra daquela aba foi reiniciado: use o link novo do terminal |
 | *"Front não compilado"* | Rode `npm run build` (ou `npm install`) na pasta do hydra |
 | *"Nenhum repositório git encontrado nesse caminho"* | O caminho não tem pasta com `.git`. Confira o caminho |
@@ -620,9 +646,10 @@ Nada fica rodando em segundo plano. O Hydra só altera seus repositórios quando
 
 | O quê | App desktop | CLI / navegador |
 |---|---|---|
-| Recentes | `%APPDATA%\Hydra\recents.json` | `%USERPROFILE%\.hydra\recents.json` |
-| Login do GitHub (quando liberado) | `%APPDATA%\Hydra\github.bin` (criptografado pelo Windows) | não guarda (usa `GITHUB_TOKEN` ou `gh`) |
-| Tamanho e posição da janela | `%APPDATA%\Hydra\window.json` | — |
+| Recentes | `%APPDATA%\hydra-git\recents.json` | `%USERPROFILE%\.hydra\recents.json` |
+| Login do GitHub (quando liberado) | `%APPDATA%\hydra-git\github.bin` (criptografado pelo Windows) | não guarda (usa `GITHUB_TOKEN` ou `gh`) |
+| Tamanho e posição da janela | `%APPDATA%\hydra-git\window.json` | — |
+| O app instalado | `%LOCALAPPDATA%\Programs\hydra-git` (o portátil não instala nada) | — |
 | Layout dos painéis, altura do terminal e pasta de clone | armazenamento local do app | `localStorage` do navegador |
 
 Nada disso vai para os seus repositórios.
@@ -638,7 +665,7 @@ Nada disso vai para os seus repositórios.
 | `npm test` | Testes (Vitest) do git contra repositórios temporários |
 | `npm run dev` | Vite com hot reload (veja abaixo) |
 | `npm run desktop` | Compila e abre o app desktop sem empacotar |
-| `npm run desktop:build` | Gera o `.exe` portátil em `release/` |
+| `npm run desktop:build` | Gera o instalador, o `latest.yml` e o `.exe` portátil em `release/` |
 
 Para mexer no front com hot reload:
 
@@ -671,7 +698,7 @@ A cada push na `main`, o GitHub Actions ([`.github/workflows/ci.yml`](.github/wo
 
 1. roda type-check, testes e build;
 2. o **semantic-release** calcula a versão, atualiza `package.json` e `CHANGELOG.md`, cria a tag `vX.Y.Z` e a **GitHub Release**;
-3. um job no Windows gera o `.exe` portátil daquela versão e **anexa na Release**.
+3. um job no Windows gera o **instalador** e o **portátil** daquela versão e anexa na Release, junto com o `latest.yml` e o `.blockmap`. São esses dois arquivos que os Hydras instalados consultam para se atualizar.
 
 A versão do `package.json` é a que aparece no rodapé da barra lateral (`GKsegura © 2026 · vX.Y.Z`), na tela inicial, no *Sobre* do app e no `hydra --version`.
 
@@ -681,7 +708,7 @@ O app é uma "casca" Electron em volta do mesmo Hydra do CLI:
 
 1. O **processo principal** (`electron/main.ts`) sobe o servidor Express em `127.0.0.1:47110` (ou na próxima porta livre) e abre uma janela apontando pra ele.
 2. A **interface** é exatamente a mesma do navegador.
-3. O **preload** (`electron/preload.ts`) expõe só três coisas: o seletor nativo, o caminho real de arquivos arrastados e as ações do menu do app.
+3. O **preload** (`electron/preload.ts`) expõe só cinco funções: o seletor nativo, o caminho real de arquivos arrastados, as ações do menu do app e o aviso de atualização (receber o estado e "reiniciar agora").
 4. O processo principal fornece ao servidor o **cofre do token** (`safeStorage`/DPAPI) e a **Lixeira** (usada ao descartar).
 5. O `esbuild` junta `electron/` + `src/` em `dist-electron/`, e o `electron-builder` empacota isso, a interface (`web/dist`), o Express, o `ws` e o `node-pty` num `.exe` portátil. O `node-pty` fica fora do `app.asar` (`asarUnpack`), porque o `conpty.dll` e os binários nativos precisam existir em disco. Como ele é N-API, o mesmo binário pré-compilado serve para o Node e para o Electron (`npmRebuild: false`, sem precisar de Visual Studio).
 
@@ -709,6 +736,7 @@ hydra/
 │  ├─ secrets.ts · config.ts   # onde o token fica · Client ID do OAuth App
 │  ├─ workspace.ts · recents.ts · data.ts · layout.ts · render.ts · version.ts · http.ts
 ├─ electron/                   # app desktop (janela, menus, seletor, cofre, lixeira)
+│  └─ updater.ts               # atualizações: electron-updater (instalado) ou aviso (portátil)
 ├─ web/src/                    # front-end (Vue 3 + TypeScript + Vite)
 │  ├─ App.vue · main.ts        # layout, atalhos, menus do app · banner GKsegura no console
 │  ├─ store.ts · actions.ts    # estado reativo · ações git no estilo GitHub Desktop
@@ -775,12 +803,13 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
   - no app, fica **criptografado pelo Windows** (`safeStorage`/DPAPI);
   - é repassado ao git por variáveis `GIT_CONFIG_*` só durante o comando, então não aparece na lista de processos e **nunca é gravado no `.git/config`**;
   - o login usa o device flow oficial, e o Hydra nunca vê sua senha.
+- **Atualizações:** o instalador só baixa das Releases do GitHub (`GKsegura/hydra`), por HTTPS. Antes de instalar, confere o **sha512** do arquivo contra o `latest.yml` da mesma Release, e nada roda se o download vier corrompido ou alterado. O portátil só consulta a API de Releases para saber se há versão nova; ele não baixa nada sozinho.
 - **Terminal integrado:**
   - o shell só abre na pasta de um repositório do workspace aberto (o caminho vem da sessão, nunca da requisição);
   - o WebSocket exige o token da sessão e recusa conexões cujo `Origin` não seja a própria interface local, então um site aberto no navegador não consegue se conectar ao seu shell;
   - trocar ou fechar o workspace, fechar o app ou dar Ctrl+C no CLI encerra os shells.
 - **Ações destrutivas** (excluir branch/tag, descartar, abortar, desfazer commit) pedem confirmação. Excluir branch não mergeada pede uma segunda confirmação, e descartar no app vai para a Lixeira.
-- **No app desktop:** a janela roda com `contextIsolation` e `sandbox`, sem acesso ao Node. A ponte tem três funções, links externos abrem no navegador padrão e a janela não navega para fora do servidor local.
+- **No app desktop:** a janela roda com `contextIsolation` e `sandbox`, sem acesso ao Node. A ponte tem cinco funções, links externos abrem no navegador padrão e a janela não navega para fora do servidor local.
 
 ## Limitações conhecidas
 
@@ -789,7 +818,8 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - O **terminal integrado** não sobrevive a reiniciar o Hydra: fechar o app encerra os shells. Um `F5`/`Ctrl+R` reconecta aos mesmos shells.
 - Não há stage **parcial** (por trecho/linha) ainda: o stage é por arquivo.
 - Commits de merge mostram os arquivos em relação ao **primeiro pai**.
-- O `.exe` é **só para Windows x64**, não é assinado (daí o aviso do SmartScreen) e tem ~100 MB, porque carrega o Chromium e o Node do Electron.
+- O app desktop é **só para Windows x64**, não é assinado (daí o aviso do SmartScreen na primeira instalação) e tem ~100 MB, porque carrega o Chromium e o Node do Electron.
+- O `.exe` **portátil** não se atualiza sozinho: ele só avisa. Para atualização automática, use o instalador.
 - O app desktop tem **uma janela** (um workspace por vez).
 - O **login com GitHub** está implementado mas **desativado** (em breve). Quando liberado, exige configurar um OAuth App uma vez ([veja como](#configurar-o-login-com-github-para-quando-for-liberado)).
 
@@ -807,7 +837,8 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - [ ] **Timeline unificada**: todos os commits do workspace numa linha do tempo só
 - [ ] Rebase interativo visual
 - [ ] Atualização em tempo real (observar o `.git` em vez de atualizar no foco)
-- [ ] Instalador com associação de arquivos (dois cliques no `.code-workspace` abre no Hydra) e atualização automática
+- [x] Instalador com atualização automática
+- [ ] Associação de arquivos ("Abrir com Hydra" no `.code-workspace`, sem tirar o VS Code como padrão)
 - [ ] Extensão do VS Code que abre o Hydra junto com o workspace
 
 ---
