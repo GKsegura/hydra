@@ -742,3 +742,17 @@ a { color: var(--accent); }
   overflow: hidden; text-overflow: ellipsis; vertical-align: middle;
   background: color-mix(in srgb, var(--c) 18%, var(--bg)); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
 }
+
+/* ---------------------------------------------------------------- stage parcial (diff) */
+
+.diff-head .diff-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.diff-head .spacer { flex: 1; }
+.diff-head { justify-content: flex-start; }
+.diff-head .muted { font-family: var(--font); font-size: 12px; white-space: nowrap; }
+.diff-head .btn { font-family: var(--font); }
+.diff-body.pick span.pickable { cursor: pointer; }
+.diff-body.pick span.pickable:hover { filter: brightness(1.35); }
+.diff-body span.chosen { outline: 1px solid var(--accent); outline-offset: -1px; background: var(--accent-soft) !important; }
+.diff-body .dl-gut { display: inline-block; width: 22px; color: var(--muted); user-select: none; }
+.diff-body span.chosen .dl-gut { color: var(--accent); }
+.diff-body .dl-hunk { float: right; margin-right: 8px; height: 18px; font-family: var(--font); }

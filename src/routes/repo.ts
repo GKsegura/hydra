@@ -2,7 +2,7 @@
 import { execFile } from 'node:child_process';
 import express, { type Request } from 'express';
 import {
-  abortOperation, addRemote, checkoutBranch, checkoutCommit, cherryPick, commit, continueOperation, createBranch,
+  abortOperation, addRemote, applyPartial, checkoutBranch, checkoutCommit, cherryPick, commit, continueOperation, createBranch,
   createTag, currentBranch, deleteBranch, deleteRemoteBranch, deleteTag, discard, fetchAll, getStatus, GitError,
   lastCommitMessage, listBranches, listRemotes, listStashes, mergeBranch, pendingMessage, previewMerge, pull, push,
   pushTag, readConflict, renameBranch, resolveWhole, resolveWithContent, revertCommit, stashApply, stashDrop,
@@ -165,6 +165,20 @@ export function repoRoutes(ctx: RepoContext) {
   r.post('/cherry-pick', async (req, res) => {
     res.json(await cherryPick(repoOf(req).path, hash(req.body?.hash)));
   });
+  // Stage parcial: só as linhas escolhidas no diff (índices no texto do diff que a interface mostrou).
+  const partial = (staged: boolean) => async (req: Request, res: express.Response) => {
+    const repo = repoOf(req);
+    const file = str(req.body?.file, 'o arquivo');
+    const lines = req.body?.lines;
+    if (!Array.isArray(lines) || !lines.length || !lines.every((n) => Number.isInteger(n) && n >= 0)) throw new HttpError(400, 'Escolha as linhas');
+    const change = (await getStatus(repo.path)).files.find((f) => f.path === file);
+    if (!change) throw new HttpError(400, 'Arquivo fora do status');
+    await applyPartial(repo.path, change, lines as number[], { staged, expected: typeof req.body?.expected === 'string' ? req.body.expected : undefined });
+    res.json(await getStatus(repo.path));
+  };
+  r.post('/stage-lines', partial(false));
+  r.post('/unstage-lines', partial(true));
+
   r.post('/discard', async (req, res) => {
     const repo = repoOf(req);
     const st = await getStatus(repo.path);

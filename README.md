@@ -95,6 +95,7 @@ O Hydra foi pensado para:
 
 ### Commits
 - **Stage/unstage** por arquivo ou tudo, com **diff** de qualquer arquivo.
+- **Stage parcial**: no diff, escolha **trechos** ("Stage deste trecho") ou **linhas soltas** (clique, `Shift` para um intervalo) e só elas entram no stage. No diff do stage, o mesmo vale para tirar linhas. Assim duas mudanças sem relação no mesmo arquivo viram commits separados.
 - **Commit** com resumo (contador de 72 caracteres) + descrição, e rascunho guardado por repo.
 - **Emendar o último commit** (amend) e **desfazer o último commit** (as alterações voltam para o stage). O desfazer só vale se o commit ainda não foi enviado.
 - **Descartar alterações** por arquivo ou tudo. No app desktop, os arquivos vão para a **Lixeira**.
@@ -422,7 +423,7 @@ Esconder um repo tira os commits dele da timeline. Para ver **só a timeline** (
 1. Edite seus arquivos no VS Code: o Hydra **atualiza sozinho**, em tempo real, assim que você salva.
 2. No painel do repo aparece a linha **`// WIP`** (ex.: `2 mod.`, `1 novo`). Clique nela.
 3. No painel direito:
-   - clique num arquivo para ver o **diff**;
+   - clique num arquivo para ver o **diff**. Para colocar no stage **só parte** do arquivo, use **"Stage deste trecho"** no cabeçalho de um trecho, ou clique nas linhas que quer (`Shift`+clique marca um intervalo) e depois em **"Stage das linhas (N)"**. No diff de um arquivo em stage, os botões viram **"Unstage"**. Arquivos novos, renomeados, binários ou em conflito vão para o stage inteiros;
    - **Stage** / **Stage all** para incluir no commit, **Unstage** para tirar;
    - clique direito num arquivo para **Descartar alterações** (ou use **Descartar** para todos).
 4. Escreva o **Resumo** (o contador avisa passando de 72) e, se quiser, a **Descrição**.
@@ -703,7 +704,7 @@ Abra `http://localhost:5173/?t=<token>` usando o mesmo token do terminal 1.
 
 ### Testes
 
-`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Confere o tempo real (um commit feito por fora vira um aviso só, e ruído do `.git/objects` é ignorado), a ordenação da timeline unificada, a comparação de versões usada no aviso de atualização e abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
+`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Confere o stage parcial (trecho, linhas soltas, unstage, CRLF e a recusa quando o arquivo muda no meio), o tempo real (um commit feito por fora vira um aviso só, e ruído do `.git/objects` é ignorado), a ordenação da timeline unificada, a comparação de versões usada no aviso de atualização e abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
 
 ### Commits, versões e releases
 
@@ -750,6 +751,7 @@ hydra/
 │  ├─ terminal.ts              # shells (node-pty): Git Bash/PowerShell, scrollback, resize
 │  ├─ git/                     # tudo que fala com o git, um arquivo por assunto
 │  │  ├─ core.ts               # execução (sem shell), progresso, mensagens amigáveis, token
+│  │  ├─ partial.ts            # stage parcial: monta o patch das linhas escolhidas e aplica com git apply --cached
 │  │  ├─ log.ts · status.ts · diff.ts · commit.ts
 │  │  ├─ branches.ts · remote.ts · merge.ts · stash.ts · tags.ts · repo.ts
 │  │  └─ index.ts
@@ -806,7 +808,7 @@ Todas as rotas exigem o header `x-hydra-token` (os streams de eventos aceitam `?
 |---|---|
 | App e workspaces | `GET /api/app` · `POST /api/workspace/open` · `POST /api/workspace/close` · `POST /api/recents/remove` · `GET /api/workspace` |
 | Leitura do repo | `GET /api/repos/:id/{graph,status,branches,remotes,operation,pulls,last-commit}` · `GET …/commit/:hash` · `GET …/commit/:hash/diff?file=` · `GET …/diff?file=&staged=` |
-| Commits | `POST …/{stage,unstage,commit,amend,undo,revert,cherry-pick,discard}` |
+| Commits | `POST …/{stage,unstage,commit,amend,undo,revert,cherry-pick,discard}` · `POST …/{stage-lines,unstage-lines}` (stage parcial: `{ file, lines, expected }`) |
 | Branches | `POST …/branches` · `…/branches/{checkout,rename,delete,delete-remote}` · `…/checkout-commit` |
 | Sync (jobs) | `POST …/{fetch,pull,push,publish}` · `POST …/remotes` (conectar um `origin`, usado no "Publicar" manual) |
 | Merge e conflitos | `GET …/merge/preview?branch=` · `POST …/merge` · `POST …/operation/{abort,continue}` · `GET …/conflicts/file?path=` · `POST …/conflicts/resolve` |
@@ -844,7 +846,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - Carrega os **N commits mais recentes** por repo (padrão 1000; no CLI, `--max`).
 - **Rebase** interativo/em andamento não é conduzido pela interface (o Hydra detecta e pede para concluir no terminal integrado).
 - O **terminal integrado** não sobrevive a reiniciar o Hydra: fechar o app encerra os shells. Um `F5`/`Ctrl+R` reconecta aos mesmos shells.
-- Não há stage **parcial** (por trecho/linha) ainda: o stage é por arquivo.
+- O **stage parcial** não vale para arquivos novos (ainda fora do índice), renomeados, binários ou em conflito: esses vão inteiros.
 - Commits de merge mostram os arquivos em relação ao **primeiro pai**.
 - O app desktop é **só para Windows x64**, não é assinado (daí o aviso do SmartScreen na primeira instalação) e tem ~100 MB, porque carrega o Chromium e o Node do Electron.
 - O `.exe` **portátil** não se atualiza sozinho: ele só avisa. Para atualização automática, use o instalador.
@@ -859,7 +861,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - [x] Clonar, criar e publicar repositórios; Pull Requests
 - [ ] **Liberar o login com GitHub** (já implementado, desativado): escolher seus repositórios ao clonar, publicar com um clique, PRs privados
 - [x] **Terminal integrado**: Git Bash embaixo dos grafos, uma aba por repositório, com o grafo atualizando depois dos comandos
-- [ ] **Stage parcial**: escolher trechos/linhas do diff para o commit
+- [x] **Stage parcial**: escolher trechos/linhas do diff para o commit
 - [ ] **Commit em vários repos de uma vez** com a mesma mensagem (ex.: a mesma feature nos 4 repos do CRONOS)
 - [ ] **Branches cross-repo**: criar/trocar/mergear a mesma branch em todos os repos do workspace
 - [x] **Timeline unificada**: todos os commits do workspace numa linha do tempo só (opcional, ao lado dos grafos ou sozinha)

@@ -13,6 +13,8 @@ interface DiffView {
   loading: boolean;
   text: string;
   error: string | null;
+  /** Diff da área de trabalho ou do stage (não de um commit): permite o stage parcial. */
+  work?: { repoId: string; file: string; staged: boolean };
 }
 
 export const state = reactive({
@@ -425,8 +427,8 @@ export async function commitStaged(id: string) {
 
 // ------------------------------------------------------------------ diff
 
-async function openDiff(title: string, key: string, fetcher: () => Promise<{ diff: string }>) {
-  state.diff = { title, key, loading: true, text: '', error: null };
+async function openDiff(title: string, key: string, fetcher: () => Promise<{ diff: string }>, work?: DiffView['work']) {
+  state.diff = { title, key, loading: true, text: '', error: null, work };
   try {
     const { diff } = await fetcher();
     if (state.diff?.key === key) state.diff = { ...state.diff, loading: false, text: diff };
@@ -441,7 +443,44 @@ export function openCommitDiff(id: string, hash: string, file: string) {
 
 export function openWorkDiff(id: string, file: string, staged: boolean) {
   if (IS_STATIC) return;
-  return openDiff(`${repoById(id)?.name} · ${staged ? 'staged' : 'working'} · ${file}`, `w:${staged}:${file}`, () => api.workDiff(id, file, staged));
+  return openDiff(`${repoById(id)?.name} · ${staged ? 'staged' : 'working'} · ${file}`, `w:${staged}:${file}`, () => api.workDiff(id, file, staged), {
+    repoId: id, file, staged,
+  });
+}
+
+/** Por que um arquivo só pode ir para o stage inteiro (espelha partialUnsupported de src/git/partial.ts). */
+export function partialBlocked(id: string, file: string, staged: boolean): string | null {
+  const f = statusOf(id)?.files.find((x) => x.path === file);
+  if (!f) return 'O arquivo não está mais no status.';
+  if (f.conflict) return 'Arquivo em conflito: resolva o conflito antes.';
+  if (!staged && f.work === '?') return 'Arquivo novo: coloque no stage inteiro.';
+  if (f.orig) return 'Arquivo renomeado: coloque no stage inteiro.';
+  return null;
+}
+
+/**
+ * Stage (ou unstage, no diff do stage) só das linhas escolhidas do diff aberto.
+ * Depois recarrega o status e o diff: as linhas aplicadas saem dele.
+ */
+export async function applyDiffLines(lines: number[]): Promise<boolean> {
+  const d = state.diff;
+  if (!d?.work || !lines.length || state.busy) return false;
+  const { repoId, file, staged } = d.work;
+  state.busy = true;
+  try {
+    const status = await (staged ? api.unstageLines : api.stageLines)(repoId, file, lines, d.text);
+    const r = repoById(repoId);
+    if (r) r.status = status;
+    toast(`${lines.length} linha(s) ${staged ? 'tirada(s) do' : 'colocada(s) no'} stage`, 'ok');
+    return true;
+  } catch (err) {
+    toast((err as Error).message, 'error');
+    return false;
+  } finally {
+    state.busy = false;
+    // Sucesso ou arquivo que mudou no meio: recarrega o diff do mesmo lado.
+    if (state.diff?.key === d.key) void openWorkDiff(repoId, file, staged);
+  }
 }
 
 export function closeDiff() {

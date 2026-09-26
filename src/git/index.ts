@@ -4,6 +4,7 @@ export * from './core.ts';
 export * from './log.ts';
 export * from './status.ts';
 export * from './diff.ts';
+export * from './partial.ts';
 export * from './commit.ts';
 export * from './branches.ts';
 export * from './remote.ts';

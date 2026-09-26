@@ -90,6 +90,9 @@ export const api = {
   // área de trabalho e commits
   stage: (id: string, files: string[] | 'all') => post<RepoStatus>(`${repo(id)}/stage`, { files }),
   unstage: (id: string, files: string[] | 'all') => post<RepoStatus>(`${repo(id)}/unstage`, { files }),
+  // stage parcial: `lines` são índices no texto do diff; `expected` é o diff que estava na tela
+  stageLines: (id: string, file: string, lines: number[], expected: string) => post<RepoStatus>(`${repo(id)}/stage-lines`, { file, lines, expected }),
+  unstageLines: (id: string, file: string, lines: number[], expected: string) => post<RepoStatus>(`${repo(id)}/unstage-lines`, { file, lines, expected }),
   discard: (id: string, files: string[] | 'all') => post<RepoStatus>(`${repo(id)}/discard`, { files }),
   commitNow: (id: string, summary: string, body: string) => post<{ hash: string; status: RepoStatus }>(`${repo(id)}/commit`, { summary, body }),
   amend: (id: string, summary: string, body: string) => post<{ hash: string; status: RepoStatus }>(`${repo(id)}/amend`, { summary, body }),
