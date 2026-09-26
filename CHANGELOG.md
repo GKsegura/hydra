@@ -2,6 +2,18 @@
 
 Este arquivo é mantido automaticamente pelo [semantic-release](https://github.com/semantic-release/semantic-release) a partir dos commits convencionais (`feat:`, `fix:`, …) na branch `main`.
 
+# [1.3.0](https://github.com/GKsegura/hydra/compare/v1.2.0...v1.3.0) (2026-09-26)
+
+
+### Bug Fixes
+
+* **desktop:** ignora o caminho do próprio app ao ler os argumentos em desenvolvimento ([d4952f4](https://github.com/GKsegura/hydra/commit/d4952f4e14273611fe62650eb3fcfc3881772f68))
+
+
+### Features
+
+* **timeline:** adiciona timeline unificada do workspace ([7d0541a](https://github.com/GKsegura/hydra/commit/7d0541a30592a85e33999b68442352877be695e6))
+
 # [1.2.0](https://github.com/GKsegura/hydra/compare/v1.1.0...v1.2.0) (2026-09-26)
 
 
