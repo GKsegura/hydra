@@ -70,6 +70,7 @@ O Hydra foi pensado para:
 - Cada repo tem uma faixa na sua cor, e a bolinha do commit fica na faixa dele. Dá pra ver de relance "o que aconteceu no workspace essa semana", sem juntar quatro grafos de cabeça.
 - O filtro (`Ctrl+F`) vale nela também. Clicar num commit abre o detalhe e rola o painel do repo até ele, e o clique direito tem o mesmo menu dos commits.
 - É um painel como os outros: redimensiona pela divisória, entra no **Igualar** e sai pelo **✕** (ou desmarcando a opção).
+- **Só a timeline**: com ela ligada, marque **"Só a timeline"** para esconder os grafos e deixar a timeline ocupando a área toda. Os repositórios marcados na barra lateral continuam definindo quais commits entram.
 
 ### Repositórios e workspaces
 - **Tela inicial** com **Clonar**, **Novo repositório**, **Abrir repositório**, **Abrir workspace** e os **recentes**.
@@ -414,7 +415,7 @@ REPOS   MENSAGEM                  REPO          AUTOR   DATA
 │ ● │   api: docker-compose       CRONOS-API    José    ontem
 ```
 
-Esconder um repo tira os commits dele da timeline. Para desligar, use o **✕** do painel ou desmarque a opção. A escolha fica salva por workspace.
+Esconder um repo tira os commits dele da timeline. Para ver **só a timeline** (sem os grafos), marque **"Só a timeline"** logo abaixo. Para desligar, use o **✕** do painel ou desmarque a opção: os grafos voltam. As escolhas ficam salvas por workspace.
 
 ### 6. Fazendo um commit
 
@@ -861,7 +862,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - [ ] **Stage parcial**: escolher trechos/linhas do diff para o commit
 - [ ] **Commit em vários repos de uma vez** com a mesma mensagem (ex.: a mesma feature nos 4 repos do CRONOS)
 - [ ] **Branches cross-repo**: criar/trocar/mergear a mesma branch em todos os repos do workspace
-- [x] **Timeline unificada**: todos os commits do workspace numa linha do tempo só (opcional, ligada pela barra lateral)
+- [x] **Timeline unificada**: todos os commits do workspace numa linha do tempo só (opcional, ao lado dos grafos ou sozinha)
 - [ ] Rebase interativo visual
 - [x] Atualização em tempo real (observar os repos em vez de atualizar no foco)
 - [x] Instalador com atualização automática

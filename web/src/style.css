@@ -721,6 +721,8 @@ a { color: var(--accent); }
 
 .side-flag { padding-left: 14px; color: var(--muted); }
 .side-flag:hover { color: var(--text); }
+.side-flag.sub { padding-left: 34px; }
+.side-flag.off { opacity: .45; cursor: default; }
 
 .pane.timeline { border-top-color: transparent; }
 .pane.timeline .graph-scroll { --tl-cols: var(--lanes-w) minmax(180px, 1fr) 110px 120px 90px; }

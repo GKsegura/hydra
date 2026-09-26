@@ -3,7 +3,7 @@
 import { computed, watch } from 'vue';
 import { IS_STATIC } from '../api.ts';
 import { applyStash, branchMenu, checkout, dropStash, loadPulls, openDialog, openMenu, tagMenu } from '../actions.ts';
-import { equalize, hideRepo, loadBranches, repoById, repoColor, selectCommit, setTimeline, showAll, showRepo, state, statusOf } from '../store.ts';
+import { equalize, hideRepo, loadBranches, repoById, repoColor, selectCommit, setTimeline, setTimelineOnly, showAll, showRepo, state, statusOf } from '../store.ts';
 import { ago } from '../utils.ts';
 import AppIcon from './AppIcon.vue';
 import SignatureFooter from './SignatureFooter.vue';
@@ -101,6 +101,14 @@ function stashMenu(ev: MouseEvent, index: number) {
         <label class="side-item side-flag" title="Um painel extra com os commits de todos os repositórios visíveis, por data">
           <input type="checkbox" :checked="state.timeline" @change="setTimeline(($event.target as HTMLInputElement).checked)">
           <span class="name">Timeline unificada</span>
+        </label>
+        <label
+          class="side-item side-flag sub"
+          :class="{ off: !state.timeline }"
+          title="Esconde os painéis dos repositórios e deixa só a timeline. Os repositórios marcados continuam definindo quais commits entram."
+        >
+          <input type="checkbox" :checked="state.timelineOnly" :disabled="!state.timeline" @change="setTimelineOnly(($event.target as HTMLInputElement).checked)">
+          <span class="name">Só a timeline</span>
         </label>
       </details>
 

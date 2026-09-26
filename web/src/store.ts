@@ -24,6 +24,7 @@ export const state = reactive({
   visible: [] as string[], // repos com painel aberto, na ordem do workspace
   sizes: {} as Record<string, number>, // flex-grow de cada painel
   timeline: false, // painel "Timeline unificada" (commits de todos os repos visíveis numa linha do tempo só)
+  timelineOnly: false, // com a timeline ligada: esconde os painéis dos repos e deixa só ela na tela
   active: null as string | null, // repo em foco (detalhe, sidebar, teclado)
   selected: null as Selection | null,
   filter: '',
@@ -124,13 +125,17 @@ const layoutKey = () => `hydra:${state.summary?.name}:layout`;
 
 export function saveLayout() {
   try {
-    localStorage.setItem(layoutKey(), JSON.stringify({ visible: state.visible, sizes: state.sizes, active: state.active, timeline: state.timeline }));
+    localStorage.setItem(layoutKey(), JSON.stringify({
+      visible: state.visible, sizes: state.sizes, active: state.active, timeline: state.timeline, timelineOnly: state.timelineOnly,
+    }));
   } catch {
     /* storage bloqueado: só não lembramos o layout */
   }
 }
 
-function readLayout(): { visible?: string[]; sizes?: Record<string, number>; active?: string; timeline?: boolean } | null {
+function readLayout(): {
+  visible?: string[]; sizes?: Record<string, number>; active?: string; timeline?: boolean; timelineOnly?: boolean;
+} | null {
   try {
     return JSON.parse(localStorage.getItem(layoutKey()) || 'null');
   } catch {
@@ -216,7 +221,17 @@ export const TIMELINE = '__timeline';
 /** Liga/desliga o painel "Timeline unificada". A escolha fica salva no layout do workspace. */
 export function setTimeline(on: boolean) {
   state.timeline = on;
-  if (!on) delete state.sizes[TIMELINE];
+  if (!on) {
+    delete state.sizes[TIMELINE];
+    state.timelineOnly = false; // desligar a timeline sempre traz os painéis de volta
+  }
+  saveLayout();
+}
+
+/** "Só a timeline": esconde os painéis dos repos (os repos marcados continuam definindo o que entra nela). */
+export function setTimelineOnly(on: boolean) {
+  state.timelineOnly = on;
+  if (on) state.timeline = true;
   saveLayout();
 }
 
@@ -268,6 +283,7 @@ export async function refresh() {
       if (!state.visible.length) state.visible = [...ids];
       state.sizes = saved?.sizes ?? {};
       state.timeline = !!saved?.timeline;
+      state.timelineOnly = !!saved?.timelineOnly;
       state.active = saved?.active && state.visible.includes(saved.active) ? saved.active : state.visible[0] ?? null;
     } else {
       state.visible = state.visible.filter((x) => ids.includes(x));
@@ -305,6 +321,7 @@ function resetWorkspaceState() {
   state.visible = [];
   state.sizes = {};
   state.timeline = false;
+  state.timelineOnly = false;
   state.active = null;
   state.selected = null;
   state.drafts = {};

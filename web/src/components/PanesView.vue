@@ -10,9 +10,12 @@ const SPLITTER = 6;
 const box = ref<HTMLElement>();
 const dragging = ref<number | null>(null);
 
-// Os painéis na ordem da tela: os repos visíveis e, com a flag ligada, a timeline unificada no fim.
-// Divisórias, "Igualar" e o ajuste à largura tratam a timeline como mais um painel.
-const paneIds = computed(() => (state.timeline ? [...state.visible, TIMELINE] : state.visible));
+// Os painéis na ordem da tela: os repos visíveis e, com a flag ligada, a timeline unificada no fim
+// (ou só ela, em "Só a timeline"). Divisórias, "Igualar" e o ajuste à largura tratam a timeline como mais um painel.
+const paneIds = computed(() => {
+  if (!state.timeline) return state.visible;
+  return state.timelineOnly ? [TIMELINE] : [...state.visible, TIMELINE];
+});
 
 /**
  * Distribui a largura disponível entre os painéis, mantendo a proporção atual.
