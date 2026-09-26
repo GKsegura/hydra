@@ -100,10 +100,16 @@ O Hydra foi pensado para:
 - Quando liberado, vai servir para listar seus repositórios ao clonar, publicar repositórios com um clique e ver PRs de repositórios privados.
 - **Sem login, tudo continua funcionando**: push, pull, fetch e clone usam o Git Credential Manager que já vem no Git for Windows. A lista de **Pull Requests** de repositórios públicos também funciona sem login.
 
+### Terminal integrado
+- **Um terminal embaixo dos grafos** (`Ctrl+\``), com **uma aba por repositório**, cada uma já aberta na pasta do repo.
+- Usa o **Git Bash** que vem com o Git for Windows: prompt com a branch, cores, `vim`, `less` e tudo que você já usa. Sem Git Bash, abre o PowerShell.
+- **O grafo acompanha**: depois de um `git commit`, `git pull` ou `git rebase` no terminal, o painel do repo se atualiza sozinho.
+- Abas coloridas com a cor do repo, painel redimensionável, `Ctrl+C` copia quando há texto selecionado e `Ctrl+V` cola. Um `F5` ou `Ctrl+R` reconecta aos mesmos shells sem perder a saída recente.
+
 ### Status, filtro e integrações
 - **Card por repo**: branch, ahead/behind, staged/modificados/novos/conflitos, última tag e idade do último commit.
 - **Filtro** por mensagem, autor, hash ou branch/tag, em todos os painéis ao mesmo tempo.
-- **Abrir no VS Code, no Explorer ou no terminal**, e **Ver no GitHub**, pelo menu `⋯` do painel.
+- **Abrir no VS Code, no Explorer ou num terminal externo**, e **Ver no GitHub**, pelo menu `⋯` do painel.
 - **Atualização automática** quando você volta pra janela (ex.: depois de commitar pelo terminal).
 
 ### Atalhos
@@ -119,6 +125,7 @@ O Hydra foi pensado para:
 | `Ctrl+F` | filtrar commits |
 | `↑` / `↓` | navegar pelos commits do repo em foco |
 | `Ctrl+Enter` | commitar (no formulário de commit) |
+| `` Ctrl+` `` | mostrar/esconder o terminal integrado (abre um no repo em foco se não houver) |
 | `Esc` | fechar diff, resolvedor, menu ou diálogo; limpar o filtro |
 | `F5` | atualizar os dados |
 | `Ctrl+R` | recarregar a página inteira (depois de atualizar o Hydra) |
@@ -141,6 +148,7 @@ As mesmas tecnologias do dia a dia (Vue 3 + TypeScript no front, Node.js + Expre
 | Testes | **Vitest** | Testes do git contra repositórios temporários (inclusive um "remoto" local) |
 | Release | **semantic-release** + **GitHub Actions** | Versão, tag, CHANGELOG e Release automáticos a partir dos commits, com o `.exe` anexado |
 | Git | **git CLI** via `child_process` | Usa o git que já está instalado; sem libs nativas |
+| Terminal | **xterm.js** + **node-pty** + **ws** | O mesmo terminal do VS Code; o shell roda num pseudo-console (ConPTY) e conversa com a interface por WebSocket local. O node-pty é dependência opcional: se não instalar, só o terminal fica indisponível |
 
 **Ficaram de fora de propósito:** Spring Boot/Java (exigiria JDK só pra falar com o git), banco de dados (o próprio git é a fonte da verdade), Docker (o Hydra precisa enxergar as pastas e o git da sua máquina) e Tauri (exigiria Rust mais um processo Node à parte).
 
@@ -561,9 +569,26 @@ O `name` é opcional e vira o título do painel. O nome do arquivo vira o nome d
 function cronos { hydra "C:\Users\José\Documents\GitHub\CRONOS\cronos.code-workspace" }
 ```
 
-### 16. Encerrando
+### 16. Usando o terminal integrado
 
-- **App desktop:** feche a janela; o servidor interno para junto.
+1. Aperte **`` Ctrl+` ``** (ou menu `⋯` do painel → **Terminal integrado**). Um Git Bash abre embaixo dos grafos, já na pasta do repo em foco:
+
+   ```
+   José@PC MINGW64 ~/Documents/GitHub/CRONOS/CRONOS-API (feature/docker-instalacao)
+   $ git status
+   ```
+
+2. **+** abre outro terminal no repo em foco; **▾** ao lado escolhe outro repo do workspace. Cada aba tem a cor do repo.
+3. Arraste a **borda de cima** do painel para mudar a altura. **—** (ou `` Ctrl+` `` de novo) esconde o painel sem fechar os shells.
+4. Rodou `git commit`, `git pull`, `git checkout`…? O grafo daquele repo **atualiza sozinho** logo depois que o comando termina.
+5. Para fechar uma aba: **✕**, clique do meio, ou `exit` no próprio shell.
+
+> Com texto selecionado, `Ctrl+C` **copia**; sem seleção, interrompe o comando como sempre. `Ctrl+V` cola.
+> Trocar ou fechar o workspace encerra os terminais dele.
+
+### 17. Encerrando
+
+- **App desktop:** feche a janela; o servidor interno e os terminais param junto.
 - **CLI:** **Ctrl+C** no terminal do Hydra.
 
 Nada fica rodando em segundo plano. O Hydra só altera seus repositórios quando você pede pela interface.
@@ -587,7 +612,9 @@ Nada fica rodando em segundo plano. O Hydra só altera seus repositórios quando
 | *"Nenhum repositório git encontrado nesse caminho"* | O caminho não tem pasta com `.git`. Confira o caminho |
 | Commit falha com *"Please tell me who you are"* | `git config --global user.name "Seu Nome"` e `git config --global user.email "voce@exemplo.com"` |
 | Commits antigos não aparecem | Só os 1000 mais recentes são carregados. No CLI, use `--max 5000` |
-| *"Rebase em andamento"* | O Hydra ainda não conduz rebase: conclua ou aborte pelo terminal (`git rebase --continue` / `--abort`) |
+| *"Rebase em andamento"* | O Hydra ainda não conduz rebase: conclua ou aborte pelo terminal integrado (`git rebase --continue` / `--abort`) |
+| *"Terminal integrado indisponível"* | O módulo `node-pty` não foi instalado (no CLI, ele é opcional). Rode `npm install` de novo na pasta do hydra; o `.exe` já vem com ele |
+| O terminal abriu PowerShell em vez de Git Bash | O Hydra não achou o `bash.exe` do Git. Confira se o Git for Windows está instalado com o Git Bash |
 
 ### Onde o Hydra guarda as coisas
 
@@ -596,7 +623,7 @@ Nada fica rodando em segundo plano. O Hydra só altera seus repositórios quando
 | Recentes | `%APPDATA%\Hydra\recents.json` | `%USERPROFILE%\.hydra\recents.json` |
 | Login do GitHub (quando liberado) | `%APPDATA%\Hydra\github.bin` (criptografado pelo Windows) | não guarda (usa `GITHUB_TOKEN` ou `gh`) |
 | Tamanho e posição da janela | `%APPDATA%\Hydra\window.json` | — |
-| Layout dos painéis e pasta de clone | armazenamento local do app | `localStorage` do navegador |
+| Layout dos painéis, altura do terminal e pasta de clone | armazenamento local do app | `localStorage` do navegador |
 
 Nada disso vai para os seus repositórios.
 
@@ -619,7 +646,7 @@ Para mexer no front com hot reload:
 # terminal 1: a API (anote o token do link)
 hydra C:\caminho\do\projeto --no-open
 
-# terminal 2: o Vite, com proxy de /api para a porta 4711
+# terminal 2: o Vite, com proxy de /api (e do WebSocket do terminal) para a porta 4711
 npm run dev
 ```
 
@@ -627,7 +654,7 @@ Abra `http://localhost:5173/?t=<token>` usando o mesmo token do terminal 1.
 
 ### Testes
 
-`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo.
+`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Também abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
 
 ### Commits, versões e releases
 
@@ -656,7 +683,7 @@ O app é uma "casca" Electron em volta do mesmo Hydra do CLI:
 2. A **interface** é exatamente a mesma do navegador.
 3. O **preload** (`electron/preload.ts`) expõe só três coisas: o seletor nativo, o caminho real de arquivos arrastados e as ações do menu do app.
 4. O processo principal fornece ao servidor o **cofre do token** (`safeStorage`/DPAPI) e a **Lixeira** (usada ao descartar).
-5. O `esbuild` junta `electron/` + `src/` em `dist-electron/`, e o `electron-builder` empacota isso, a interface (`web/dist`) e o Express num `.exe` portátil.
+5. O `esbuild` junta `electron/` + `src/` em `dist-electron/`, e o `electron-builder` empacota isso, a interface (`web/dist`), o Express, o `ws` e o `node-pty` num `.exe` portátil. O `node-pty` fica fora do `app.asar` (`asarUnpack`), porque o `conpty.dll` e os binários nativos precisam existir em disco. Como ele é N-API, o mesmo binário pré-compilado serve para o Node e para o Electron (`npmRebuild: false`, sem precisar de Visual Studio).
 
 ### Estrutura
 
@@ -665,10 +692,12 @@ hydra/
 ├─ bin/hydra.js                # entrada do comando `hydra`
 ├─ src/                        # back-end (Node + TypeScript, sem build)
 │  ├─ cli.ts                   # argumentos, modo servidor ou --out (banner GKsegura)
-│  ├─ server.ts                # Express: sessão (workspace atual), rotas base, SSE, front
+│  ├─ server.ts                # Express: sessão (workspace atual), rotas base, SSE, WebSocket do terminal, front
 │  ├─ routes/
 │  │  ├─ repo.ts               # /api/repos/:id/… branches, sync, merge, conflitos, stash, tags…
-│  │  └─ app.ts                # clonar, criar repositório, conta do GitHub
+│  │  ├─ app.ts                # clonar, criar repositório, conta do GitHub
+│  │  └─ terminal.ts           # abrir/fechar terminais integrados
+│  ├─ terminal.ts              # shells (node-pty): Git Bash/PowerShell, scrollback, resize
 │  ├─ git/                     # tudo que fala com o git, um arquivo por assunto
 │  │  ├─ core.ts               # execução (sem shell), progresso, mensagens amigáveis, token
 │  │  ├─ log.ts · status.ts · diff.ts · commit.ts
@@ -683,12 +712,14 @@ hydra/
 ├─ web/src/                    # front-end (Vue 3 + TypeScript + Vite)
 │  ├─ App.vue · main.ts        # layout, atalhos, menus do app · banner GKsegura no console
 │  ├─ store.ts · actions.ts    # estado reativo · ações git no estilo GitHub Desktop
+│  ├─ terminal.ts              # abas do terminal integrado (abrir, fechar, Ctrl+`)
 │  ├─ api.ts · types.ts · graph.ts · utils.ts
 │  └─ components/              # GraphPane, BranchMenu, SyncButton, ConflictResolver,
-│     │                        # OperationBanner, ContextMenu, SideBar, WipPanel, WelcomeScreen…
+│     │                        # OperationBanner, ContextMenu, SideBar, WipPanel, WelcomeScreen,
+│     │                        # TerminalDock (painel e abas) e TerminalView (xterm.js)…
 │     └─ dialogs/              # criar/renomear/excluir branch, merge, clonar, novo repo,
 │                              # publicar, tag, stash, GitHub, confirmação
-├─ test/                       # Vitest: operações git em repositórios temporários
+├─ test/                       # Vitest: operações git em repositórios temporários e terminal
 ├─ scripts/ · build/icon.svg   # build do Electron e ícone
 ├─ .github/workflows/ci.yml    # testes, semantic-release e .exe na Release
 ├─ .releaserc.json · CHANGELOG.md · LICENSE
@@ -724,7 +755,8 @@ Todas as rotas exigem o header `x-hydra-token` (o stream de progresso aceita `?t
 | Sync (jobs) | `POST …/{fetch,pull,push,publish}` |
 | Merge e conflitos | `GET …/merge/preview?branch=` · `POST …/merge` · `POST …/operation/{abort,continue}` · `GET …/conflicts/file?path=` · `POST …/conflicts/resolve` |
 | Stash e tags | `POST …/stashes` · `…/stashes/{apply,drop}` · `POST …/tags` · `…/tags/{push,delete}` |
-| Outros | `POST …/open` (VS Code/Explorer/terminal) · `GET …/compare-url` |
+| Outros | `POST …/open` (VS Code/Explorer/terminal externo) · `GET …/compare-url` |
+| Terminal integrado | `GET /api/terminal` · `POST /api/repos/:id/terminals` · `DELETE /api/terminals/:tid` · WebSocket `/api/terminals/:tid/ws?t=` (entrada `i…`, redimensionar `r{cols,rows}`) |
 | Clonar/criar (jobs) | `POST /api/repos/clone` · `POST /api/repos/init` · `GET /api/repos/templates` |
 | GitHub | `GET /api/github` · `POST /api/github/{login,login/cancel,logout}` · `GET /api/github/repos` |
 
@@ -743,13 +775,18 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
   - no app, fica **criptografado pelo Windows** (`safeStorage`/DPAPI);
   - é repassado ao git por variáveis `GIT_CONFIG_*` só durante o comando, então não aparece na lista de processos e **nunca é gravado no `.git/config`**;
   - o login usa o device flow oficial, e o Hydra nunca vê sua senha.
+- **Terminal integrado:**
+  - o shell só abre na pasta de um repositório do workspace aberto (o caminho vem da sessão, nunca da requisição);
+  - o WebSocket exige o token da sessão e recusa conexões cujo `Origin` não seja a própria interface local, então um site aberto no navegador não consegue se conectar ao seu shell;
+  - trocar ou fechar o workspace, fechar o app ou dar Ctrl+C no CLI encerra os shells.
 - **Ações destrutivas** (excluir branch/tag, descartar, abortar, desfazer commit) pedem confirmação. Excluir branch não mergeada pede uma segunda confirmação, e descartar no app vai para a Lixeira.
 - **No app desktop:** a janela roda com `contextIsolation` e `sandbox`, sem acesso ao Node. A ponte tem três funções, links externos abrem no navegador padrão e a janela não navega para fora do servidor local.
 
 ## Limitações conhecidas
 
 - Carrega os **N commits mais recentes** por repo (padrão 1000; no CLI, `--max`).
-- **Rebase** interativo/em andamento não é conduzido pela interface (o Hydra detecta e pede para concluir no terminal).
+- **Rebase** interativo/em andamento não é conduzido pela interface (o Hydra detecta e pede para concluir no terminal integrado).
+- O **terminal integrado** não sobrevive a reiniciar o Hydra: fechar o app encerra os shells. Um `F5`/`Ctrl+R` reconecta aos mesmos shells.
 - Não há stage **parcial** (por trecho/linha) ainda: o stage é por arquivo.
 - Commits de merge mostram os arquivos em relação ao **primeiro pai**.
 - O `.exe` é **só para Windows x64**, não é assinado (daí o aviso do SmartScreen) e tem ~100 MB, porque carrega o Chromium e o Node do Electron.
@@ -763,7 +800,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - [x] Merge com prévia e resolvedor visual de conflitos
 - [x] Clonar, criar e publicar repositórios; Pull Requests
 - [ ] **Liberar o login com GitHub** (já implementado, desativado): escolher seus repositórios ao clonar, publicar com um clique, PRs privados
-- [ ] **Terminal integrado**: painel de terminal (xterm.js + node-pty) que abre na pasta do repo em foco, com uma aba por repositório
+- [x] **Terminal integrado**: Git Bash embaixo dos grafos, uma aba por repositório, com o grafo atualizando depois dos comandos
 - [ ] **Stage parcial**: escolher trechos/linhas do diff para o commit
 - [ ] **Commit em vários repos de uma vez** com a mesma mensagem (ex.: a mesma feature nos 4 repos do CRONOS)
 - [ ] **Branches cross-repo**: criar/trocar/mergear a mesma branch em todos os repos do workspace
