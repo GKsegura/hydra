@@ -15,7 +15,7 @@ import TerminalDock from './components/TerminalDock.vue';
 import TopBar from './components/TopBar.vue';
 import WelcomeScreen from './components/WelcomeScreen.vue';
 import WipPanel from './components/WipPanel.vue';
-import { closeDiff, closeWorkspace, hasWip, moveSelection, openWorkspace, pickWorkspace, refresh, state } from './store.ts';
+import { closeDiff, closeWorkspace, connectEvents, hasWip, moveSelection, openWorkspace, pickWorkspace, refresh, state } from './store.ts';
 import { loadTerminalInfo, toggleTerminal } from './terminal.ts';
 
 const topbar = ref<InstanceType<typeof TopBar>>();
@@ -112,10 +112,10 @@ function onDrop(ev: DragEvent) {
   if (path) openWorkspace(path);
 }
 
-// Voltou pra janela (ex.: commitou pelo terminal)? Atualiza.
+// Voltou pra janela? Atualiza, mas só se o tempo real estiver desconectado (com ele, tudo já está em dia).
 let lastFocus = Date.now();
 function onFocus() {
-  if (IS_STATIC || Date.now() - lastFocus < 3000) return;
+  if (IS_STATIC || state.live || Date.now() - lastFocus < 3000) return;
   lastFocus = Date.now();
   refresh();
 }
@@ -128,6 +128,7 @@ onMounted(() => {
   if (!IS_STATIC) {
     loadGitHub();
     loadTerminalInfo();
+    connectEvents();
   }
 });
 onBeforeUnmount(() => {

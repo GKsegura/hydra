@@ -109,14 +109,14 @@ O Hydra foi pensado para:
 ### Terminal integrado
 - **Um terminal embaixo dos grafos** (`Ctrl+\``), com **uma aba por repositório**, cada uma já aberta na pasta do repo.
 - Usa o **Git Bash** que vem com o Git for Windows: prompt com a branch, cores, `vim`, `less` e tudo que você já usa. Sem Git Bash, abre o PowerShell.
-- **O grafo acompanha**: depois de um `git commit`, `git pull` ou `git rebase` no terminal, o painel do repo se atualiza sozinho.
+- **O grafo acompanha**: depois de um `git commit`, `git pull` ou `git rebase` no terminal, o painel do repo se atualiza sozinho (pelo [tempo real](#status-filtro-e-integrações)).
 - Abas coloridas com a cor do repo, painel redimensionável, `Ctrl+C` copia quando há texto selecionado e `Ctrl+V` cola. Um `F5` ou `Ctrl+R` reconecta aos mesmos shells sem perder a saída recente.
 
 ### Status, filtro e integrações
 - **Card por repo**: branch, ahead/behind, staged/modificados/novos/conflitos, última tag e idade do último commit.
 - **Filtro** por mensagem, autor, hash ou branch/tag, em todos os painéis ao mesmo tempo.
 - **Abrir no VS Code, no Explorer ou num terminal externo**, e **Ver no GitHub**, pelo menu `⋯` do painel.
-- **Atualização automática** quando você volta pra janela (ex.: depois de commitar pelo terminal).
+- **Tempo real**: o Hydra observa os repositórios abertos e se atualiza sozinho em cerca de 1 segundo, seja qual for a origem da mudança (um commit no VS Code, um `git pull` no terminal, um arquivo salvo ou uma troca de branch), sem precisar de F5 nem de voltar o foco para a janela.
 
 ### Atalhos
 
@@ -133,7 +133,7 @@ O Hydra foi pensado para:
 | `Ctrl+Enter` | commitar (no formulário de commit) |
 | `` Ctrl+` `` | mostrar/esconder o terminal integrado (abre um no repo em foco se não houver) |
 | `Esc` | fechar diff, resolvedor, menu ou diálogo; limpar o filtro |
-| `F5` | atualizar os dados |
+| `F5` | atualizar os dados (normalmente desnecessário: o Hydra se atualiza em tempo real) |
 | `Ctrl+R` | recarregar a página inteira (depois de atualizar o Hydra) |
 | Clique direito | menu de ações em commits, branches, tags, arquivos e stashes |
 
@@ -200,7 +200,7 @@ O portátil **não se atualiza sozinho**: quando sai uma versão nova, ele avisa
    - **Reiniciar agora** fecha o Hydra, instala e abre de novo já na versão nova (leva alguns segundos);
    - **Depois** esconde o aviso, e a atualização é instalada na próxima vez que você fechar o Hydra.
 
-Para verificar na hora: menu **Ajuda → Procurar atualizações…** (tecla `Alt` mostra o menu). **Ajuda → Notas da versão** abre o que mudou na versão atual.
+Para verificar na hora: menu **Ajuda → Procurar atualizações…**. **Ajuda → Notas da versão** abre o que mudou na versão atual.
 
 **No portátil**, aparece **"Hydra 1.3.0 disponível · Baixar"**, que abre a página da Release.
 
@@ -418,7 +418,7 @@ Esconder um repo tira os commits dele da timeline. Para desligar, use o **✕** 
 
 ### 6. Fazendo um commit
 
-1. Edite seus arquivos no VS Code e volte para o Hydra: ele **atualiza sozinho** ao receber o foco (ou `F5`).
+1. Edite seus arquivos no VS Code: o Hydra **atualiza sozinho**, em tempo real, assim que você salva.
 2. No painel do repo aparece a linha **`// WIP`** (ex.: `2 mod.`, `1 novo`). Clique nela.
 3. No painel direito:
    - clique num arquivo para ver o **diff**;
@@ -566,7 +566,7 @@ A troca é feita **dentro do Hydra**:
 
 - **Menu do topo** (`workspace cronos ▾`): **Recentes**, *Clonar…*, *Novo repositório…*, *Abrir workspace…* (`Ctrl+O`), *Abrir repositório ou pasta…* (app), *Tela inicial* e *Fechar workspace*.
 - **Tela inicial**: recentes (o **✕** tira da lista, sem apagar nada), cartões ou colar o caminho.
-- **Menu do app** (`Alt`): **Arquivo**, **Repositório**, **Exibir** e **Ajuda** (conta do GitHub, procurar atualizações, notas da versão, sobre).
+- **Menu do app** (a barra no topo da janela): **Arquivo**, **Repositório**, **Exibir** e **Ajuda** (conta do GitHub, procurar atualizações, notas da versão, sobre).
 
 Cada workspace guarda **o seu próprio layout**.
 
@@ -625,7 +625,7 @@ function cronos { hydra "C:\Users\José\Documents\GitHub\CRONOS\cronos.code-work
 
 2. **+** abre outro terminal no repo em foco; **▾** ao lado escolhe outro repo do workspace. Cada aba tem a cor do repo.
 3. Arraste a **borda de cima** do painel para mudar a altura. **—** (ou `` Ctrl+` `` de novo) esconde o painel sem fechar os shells.
-4. Rodou `git commit`, `git pull`, `git checkout`…? O grafo daquele repo **atualiza sozinho** logo depois que o comando termina.
+4. Rodou `git commit`, `git pull`, `git checkout`…? O grafo daquele repo **atualiza sozinho** logo depois que o comando termina (vale também para comandos rodados fora do Hydra).
 5. Para fechar uma aba: **✕**, clique do meio, ou `exit` no próprio shell.
 
 > Com texto selecionado, `Ctrl+C` **copia**; sem seleção, interrompe o comando como sempre. `Ctrl+V` cola.
@@ -652,6 +652,7 @@ Nada fica rodando em segundo plano. O Hydra só altera seus repositórios quando
 | *"Esse commit já está no remoto"* ao desfazer | Commits publicados não são desfeitos para não reescrever o histórico: use **Reverter** |
 | `hydra` não é reconhecido como comando | Rode `npm link` na pasta do hydra e **abra um terminal novo**. Alternativa: `npm start -- <caminho>` |
 | Atualizei o Hydra, mas a tela continua igual | Reinicie o Hydra e recarregue com **Ctrl+R**. O `F5` do Hydra só atualiza os dados |
+| Uma mudança feita fora do Hydra não apareceu | O tempo real reconecta sozinho se a conexão cair. Enquanto isso, voltar o foco para a janela ou `F5` atualiza. Repos em pastas de rede podem não avisar mudanças: use `F5` |
 | O aviso de atualização não aparece | Confira em **Ajuda → Procurar atualizações…**. Logo depois de uma Release sair, o instalador leva alguns minutos para ser anexado; o Hydra tenta de novo a cada 4 horas |
 | *"Token inválido"* / *"Abra pelo link mostrado no terminal"* | O Hydra daquela aba foi reiniciado: use o link novo do terminal |
 | *"Front não compilado"* | Rode `npm run build` (ou `npm install`) na pasta do hydra |
@@ -701,7 +702,7 @@ Abra `http://localhost:5173/?t=<token>` usando o mesmo token do terminal 1.
 
 ### Testes
 
-`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Confere a ordenação da timeline unificada, a comparação de versões usada no aviso de atualização e abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
+`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Confere o tempo real (um commit feito por fora vira um aviso só, e ruído do `.git/objects` é ignorado), a ordenação da timeline unificada, a comparação de versões usada no aviso de atualização e abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
 
 ### Commits, versões e releases
 
@@ -752,6 +753,7 @@ hydra/
 │  │  ├─ branches.ts · remote.ts · merge.ts · stash.ts · tags.ts · repo.ts
 │  │  └─ index.ts
 │  ├─ jobs.ts                  # operações longas com progresso (clone/fetch/pull/push)
+│  ├─ watch.ts                 # tempo real: observa os repos e avisa o que mudou (com debounce)
 │  ├─ github.ts                # API do GitHub + login por device flow
 │  ├─ github-session.ts        # conta conectada (token, usuário, login em andamento)
 │  ├─ secrets.ts · config.ts   # onde o token fica · Client ID do OAuth App
@@ -797,7 +799,7 @@ hydra/
 
 ### API local
 
-Todas as rotas exigem o header `x-hydra-token` (o stream de progresso aceita `?t=`). Sem workspace aberto, as rotas de repositório respondem `409`. Operações longas devolvem `{ jobId }` e o progresso vem por `GET /api/jobs/:id/events` (Server-Sent Events).
+Todas as rotas exigem o header `x-hydra-token` (os streams de eventos aceitam `?t=`). Sem workspace aberto, as rotas de repositório respondem `409`. Operações longas devolvem `{ jobId }` e o progresso vem por `GET /api/jobs/:id/events` (Server-Sent Events). O tempo real vem por `GET /api/events`, que manda `{ repoId, kind }` a cada mudança: `repo` quando o `.git` mudou (recarrega grafo e status) e `status` quando só a árvore de trabalho mudou.
 
 | Grupo | Rotas principais |
 |---|---|
@@ -861,7 +863,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - [ ] **Branches cross-repo**: criar/trocar/mergear a mesma branch em todos os repos do workspace
 - [x] **Timeline unificada**: todos os commits do workspace numa linha do tempo só (opcional, ligada pela barra lateral)
 - [ ] Rebase interativo visual
-- [ ] Atualização em tempo real (observar o `.git` em vez de atualizar no foco)
+- [x] Atualização em tempo real (observar os repos em vez de atualizar no foco)
 - [x] Instalador com atualização automática
 - [ ] Associação de arquivos ("Abrir com Hydra" no `.code-workspace`, sem tirar o VS Code como padrão)
 - [ ] Extensão do VS Code que abre o Hydra junto com o workspace

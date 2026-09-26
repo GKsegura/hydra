@@ -22,6 +22,7 @@ import { terminalRoutes } from './routes/terminal.ts';
 import { memoryStore, type SecretStore } from './secrets.ts';
 import { Terminals } from './terminal.ts';
 import { VERSION } from './version.ts';
+import { RepoWatchers } from './watch.ts';
 import { loadWorkspace, type Repo, type Workspace } from './workspace.ts';
 
 /** Pasta sugerida para clonar/criar repositórios: Documentos\GitHub se existir (padrão do GitHub Desktop). */
@@ -74,6 +75,8 @@ export class Session {
   recents: Recents;
   /** Chamado quando o workspace troca ou fecha (ex.: encerrar os terminais do workspace anterior). */
   onReset: (() => void) | null = null;
+  /** Chamado depois que um workspace abre (ex.: começar a observar os repos dele). */
+  onOpen: ((ws: Workspace) => void) | null = null;
 
   constructor(recentsFile: string) {
     this.recents = new Recents(recentsFile);
@@ -87,6 +90,7 @@ export class Session {
     this.ws = ws;
     this.repos = new Map(ws.repos.map((r) => [r.id, r]));
     this.recents.add({ path: ws.source ?? target, name: ws.name });
+    this.onOpen?.(ws);
     return ws;
   }
 
@@ -109,7 +113,9 @@ export class Session {
   }
 }
 
-export function createApp(session: Session, opts: ServerOptions, token: string, jobs: Jobs, github: GitHubSession, terminals: Terminals) {
+export function createApp(
+  session: Session, opts: ServerOptions, token: string, jobs: Jobs, github: GitHubSession, terminals: Terminals, watchers: RepoWatchers,
+) {
   const repoOf = (req: Request): Repo => session.repo(String(req.params.id));
 
   const app = express();
@@ -126,9 +132,10 @@ export function createApp(session: Session, opts: ServerOptions, token: string, 
   const api = express.Router();
   api.use(express.json({ limit: '1mb' }));
   // Header customizado + token: outra página não consegue chamar a API (nem via CORS simples).
-  // Única exceção: o stream de progresso (EventSource não envia headers), que aceita ?t= e só lê eventos.
+  // Exceções: os streams de eventos (EventSource não envia headers), que aceitam ?t= e só leem eventos.
   api.use((req, _res, next) => {
-    const sse = req.method === 'GET' && /^\/jobs\/[0-9a-f]+\/events$/.test(req.path) && req.query.t === token;
+    const stream = req.path === '/events' || /^\/jobs\/[0-9a-f]+\/events$/.test(req.path);
+    const sse = req.method === 'GET' && stream && req.query.t === token;
     next(req.headers['x-hydra-token'] === token || sse ? undefined : new HttpError(401, 'Token inválido'));
   });
 
@@ -207,6 +214,18 @@ export function createApp(session: Session, opts: ServerOptions, token: string, 
     if ((await getStatus(repo.path)).staged === 0) throw new HttpError(400, 'Nada em stage para commitar');
     const hash = await commit(repo.path, summary, body);
     res.json({ hash, status: await getStatus(repo.path) });
+  });
+
+  // Tempo real: um aviso por repo que mudou (ver src/watch.ts). Um comentário a cada 25 s mantém a conexão viva.
+  api.get('/events', (req, res) => {
+    res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-store', connection: 'keep-alive' });
+    res.write(': conectado\n\n');
+    const unsubscribe = watchers.subscribe((change) => res.write(`data: ${JSON.stringify(change)}\n\n`));
+    const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
+    req.on('close', () => {
+      clearInterval(ping);
+      unsubscribe();
+    });
   });
 
   // Progresso das operações longas (Server-Sent Events).
@@ -301,8 +320,14 @@ export async function startServer(target: string | null, opts: ServerOptions): P
   await github.init();
   const terminals = new Terminals();
   await terminals.init();
-  session.onReset = () => terminals.killAll();
-  const app = createApp(session, opts, token, jobs, github, terminals);
+  const watchers = new RepoWatchers();
+  session.onReset = () => {
+    terminals.killAll();
+    watchers.close();
+  };
+  session.onOpen = (ws) => watchers.watch(ws.repos);
+  if (session.ws) watchers.watch(session.ws.repos); // aberto antes de os ganchos existirem (caminho na linha de comando)
+  const app = createApp(session, opts, token, jobs, github, terminals, watchers);
 
   return new Promise((resolve, reject) => {
     const tryListen = (port: number) => {
@@ -310,7 +335,10 @@ export async function startServer(target: string | null, opts: ServerOptions): P
       server.once('listening', () => {
         const real = (server.address() as AddressInfo).port;
         attachTerminalSockets(server, token, terminals);
-        server.on('close', () => terminals.killAll());
+        server.on('close', () => {
+          terminals.killAll();
+          watchers.close();
+        });
         resolve({ url: `http://127.0.0.1:${real}/?t=${token}`, token, port: real, server, session, github, terminals });
       });
       server.once('error', (err: NodeJS.ErrnoException) => {

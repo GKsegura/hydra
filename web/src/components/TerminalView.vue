@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { terminalSocketUrl } from '../api.ts';
-import { refreshRepo, state, toast, type TerminalTab } from '../store.ts';
+import { state, toast, type TerminalTab } from '../store.ts';
 import { closeTerminal, tabTitle } from '../terminal.ts';
 
 const props = defineProps<{ tab: TerminalTab; active: boolean }>();
@@ -54,10 +54,7 @@ function connect() {
     term.reset(); // o servidor repete a saída recente: começa da tela limpa para não duplicar
     sendSize();
   };
-  ws.onmessage = (ev) => {
-    term.write(typeof ev.data === 'string' ? ev.data : '');
-    outputArrived();
-  };
+  ws.onmessage = (ev) => term.write(typeof ev.data === 'string' ? ev.data : '');
   ws.onclose = (ev) => {
     ws = null;
     if (disposed) return;
@@ -73,25 +70,8 @@ function connect() {
   };
 }
 
-// ------------------------------------------------------------------ atualiza o repo depois de um comando
-
-// Depois de um Enter, quando a saída para por um instante o comando provavelmente terminou (ex.: git commit,
-// git pull): recarrega status e grafo do repo desse terminal.
-let pendingCommand = false;
-let idleTimer: ReturnType<typeof setTimeout> | undefined;
-function outputArrived() {
-  if (!pendingCommand) return;
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => {
-    pendingCommand = false;
-    if (state.summary?.repos.some((r) => r.id === props.tab.repoId)) refreshRepo(props.tab.repoId);
-  }, 800);
-}
-
-term.onData((data) => {
-  if (data.includes('\r')) pendingCommand = true;
-  send(`i${data}`);
-});
+// Comandos git digitados aqui (commit, pull, checkout…) aparecem no grafo pela atualização em tempo real.
+term.onData((data) => send(`i${data}`));
 term.onResize(sendSize);
 
 // Ctrl+C copia se houver seleção (senão vai para o shell como interrupção); Ctrl+V cola;
@@ -144,7 +124,6 @@ watch(
 onBeforeUnmount(() => {
   disposed = true;
   clearTimeout(retryTimer);
-  clearTimeout(idleTimer);
   observer?.disconnect();
   ws?.close();
   term.dispose();

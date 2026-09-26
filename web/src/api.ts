@@ -59,6 +59,9 @@ export function followJob<T = unknown>(jobId: string, onProgress: (p: Progress) 
 const enc = encodeURIComponent;
 const repo = (id: string) => `/repos/${enc(id)}`;
 
+/** Stream de mudanças nos repos (tempo real). Como no progresso dos jobs, o token vai na URL. */
+export const eventsUrl = () => `/api/events?t=${encodeURIComponent(BOOT.token ?? '')}`;
+
 /** WebSocket de um terminal. Como no stream de progresso, o token vai na URL (o WebSocket não envia headers). */
 export function terminalSocketUrl(tid: string): string {
   return `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/terminals/${enc(tid)}/ws?t=${enc(BOOT.token ?? '')}`;

@@ -1,6 +1,6 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 import { reactive } from 'vue';
-import { api, desktop, IS_STATIC } from './api.ts';
+import { api, desktop, eventsUrl, IS_STATIC } from './api.ts';
 import type {
   AppInfo, BranchInfo, Commit, ConflictFile, GitHubInfo, OperationInfo, PullsInfo, RepoGraph, RepoStatus, Selection, TerminalInfo,
   WorkspaceSummary,
@@ -31,6 +31,7 @@ export const state = reactive({
   diff: null as DiffView | null,
   scroll: null as { repoId: string; row: number; seq: number } | null,
   busy: false,
+  live: false, // conectado ao stream de mudanças (tempo real)
   toast: { msg: '', kind: '', show: false },
 
   // ---- operações git (branches, sync, merge…)
@@ -461,4 +462,68 @@ export async function loadBranches(id: string) {
 
 export async function loadOperation(id: string) {
   state.operations[id] = await api.operation(id);
+}
+
+// ------------------------------------------------------------------ tempo real
+
+type ChangeKind = 'repo' | 'status';
+
+/** Só a árvore de trabalho mudou: recarrega o status, sem mexer na seleção (a não ser que o WIP tenha sumido). */
+async function refreshStatus(id: string) {
+  const r = repoById(id);
+  if (!r) return;
+  try {
+    r.status = await api.status(id);
+    if (state.selected?.repoId === id && state.selected.type === 'wip' && !hasWip(id)) selectDefault(id);
+  } catch {
+    /* repo em mudança (ex.: git com lock): o próximo aviso tenta de novo */
+  }
+}
+
+// Um aviso por repo por vez: o que chegar durante uma recarga fica guardado e roda logo depois, uma vez só.
+const queued = new Map<string, ChangeKind>();
+const running = new Set<string>();
+
+function onRepoChange(id: string, kind: ChangeKind) {
+  if (!repoById(id)) return;
+  const prev = queued.get(id);
+  queued.set(id, prev === 'repo' || kind === 'repo' ? 'repo' : 'status');
+  if (!running.has(id)) void drain(id);
+}
+
+async function drain(id: string) {
+  running.add(id);
+  try {
+    while (queued.has(id)) {
+      const kind = queued.get(id)!;
+      queued.delete(id);
+      if (kind === 'status') await refreshStatus(id);
+      else if (state.visible.includes(id)) await refreshRepo(id);
+      else {
+        // Painel escondido: só o card precisa do status; o grafo é recarregado quando o painel voltar.
+        delete state.graphs[id];
+        await refreshStatus(id);
+      }
+    }
+  } finally {
+    running.delete(id);
+  }
+}
+
+let events: EventSource | null = null;
+
+/**
+ * Tempo real: o servidor observa os repos e avisa quando algo muda (commit no VS Code, pull no terminal,
+ * arquivo salvo…). O EventSource reconecta sozinho se a conexão cair; enquanto isso, `state.live` fica falso
+ * e a janela volta a se atualizar ao receber o foco.
+ */
+export function connectEvents() {
+  if (IS_STATIC || events) return;
+  events = new EventSource(eventsUrl());
+  events.onopen = () => (state.live = true);
+  events.onerror = () => (state.live = false);
+  events.onmessage = (ev) => {
+    const change = JSON.parse(ev.data) as { repoId: string; kind: ChangeKind };
+    onRepoChange(change.repoId, change.kind);
+  };
 }
