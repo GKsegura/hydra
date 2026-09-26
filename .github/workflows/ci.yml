@@ -1,0 +1,86 @@
+# Hydra — © 2026 José Segura (GKsegura) · MIT
+# test    → type-check, testes e build em todo push/PR
+# release → na main, o semantic-release gera tag vX.Y.Z, CHANGELOG e GitHub Release (commits convencionais)
+# desktop → se saiu versão nova, gera o .exe portátil no Windows e anexa na Release
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+
+  release:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: semantic-release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Versão publicada (se houve)
+        id: version
+        run: |
+          TAG=$(git describe --tags --exact-match HEAD 2>/dev/null || true)
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Tag desta execução: ${TAG:-nenhuma}"
+
+  desktop:
+    needs: release
+    if: needs.release.outputs.tag != ''
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run desktop:build
+
+      - name: Anexa o .exe na Release
+        shell: bash
+        run: gh release upload "${{ needs.release.outputs.tag }}" release/Hydra-*-portable.exe --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

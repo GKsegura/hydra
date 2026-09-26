@@ -1,0 +1,16 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    ["@semantic-release/changelog", {
+      "changelogTitle": "# Changelog\n\nEste arquivo é mantido automaticamente pelo [semantic-release](https://github.com/semantic-release/semantic-release) a partir dos commits convencionais (`feat:`, `fix:`, …) na branch `main`."
+    }],
+    ["@semantic-release/npm", { "npmPublish": false }],
+    ["@semantic-release/git", {
+      "assets": ["package.json", "package-lock.json", "CHANGELOG.md"],
+      "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+    }],
+    "@semantic-release/github"
+  ]
+}
