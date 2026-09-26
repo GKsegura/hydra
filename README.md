@@ -47,7 +47,7 @@ O Hydra foi pensado para:
 3. **Deixar você escolher e dimensionar**: quais repos aparecem e quanto espaço cada um ocupa.
 4. **Responder de relance** "está tudo limpo e sincronizado?", com um card de status por repo.
 5. **Fazer o dia a dia do git sem sair da tela**: commit, branches, sync, merge e conflitos, no estilo do GitHub Desktop, mas em vários repos ao mesmo tempo.
-6. **Ser fácil de rodar**: um `.exe` portátil, ou um `npm install` para quem prefere o terminal. Sem banco, sem Docker, 100% local. A conta do GitHub é opcional.
+6. **Ser fácil de rodar**: um instalador que se atualiza sozinho (ou um `.exe` portátil), ou um `npm install` para quem prefere o terminal. Sem banco, sem Docker, 100% local. A conta do GitHub é opcional.
 
 ---
 
@@ -147,7 +147,7 @@ As mesmas tecnologias do dia a dia (Vue 3 + TypeScript no front, Node.js + Expre
 | Atualizações | **electron-updater** | Baixa a versão nova das Releases do GitHub, confere o sha512 e instala ao reiniciar |
 | Build do desktop | **esbuild** | Empacota o processo principal do Electron (e o back-end) |
 | Testes | **Vitest** | Testes do git contra repositórios temporários (inclusive um "remoto" local) |
-| Release | **semantic-release** + **GitHub Actions** | Versão, tag, CHANGELOG e Release automáticos a partir dos commits, com o `.exe` anexado |
+| Release | **semantic-release** + **GitHub Actions** | Versão, tag, CHANGELOG e Release automáticos a partir dos commits, com o instalador e o portátil anexados |
 | Git | **git CLI** via `child_process` | Usa o git que já está instalado; sem libs nativas |
 | Terminal | **xterm.js** + **node-pty** + **ws** | O mesmo terminal do VS Code; o shell roda num pseudo-console (ConPTY) e conversa com a interface por WebSocket local. O node-pty é dependência opcional: se não instalar, só o terminal fica indisponível |
 
@@ -318,7 +318,7 @@ Um passo a passo do uso no dia a dia, usando o CRONOS como exemplo. Tudo vale ig
 
 ### 1. Abrindo um projeto
 
-**No app desktop:** dê dois cliques no `.exe`. Na tela inicial:
+**No app desktop:** abra o Hydra pelo Menu Iniciar (ou dê dois cliques no `.exe` portátil). Na tela inicial:
 
 - **Abrir workspace** → escolha `C:\Users\José\Documents\GitHub\CRONOS\cronos.code-workspace` (os 4 repos lado a lado);
 - **Abrir repositório** → escolha a pasta de um projeto normal (um painel só, ocupando a tela);
@@ -350,7 +350,7 @@ O terminal mostra a assinatura **GKsegura** em arte ASCII, lista os repositório
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ 🐉 Hydra  workspace cronos ▾         [ Filtrar commits ]  Atualizar  (GitHub)  ● │  ← topo
+│ 🐉 Hydra  workspace cronos ▾   [ Filtrar commits ]  Atualizar  (aviso)  GitHub ● │  ← topo
 ├──────────────────────────────────────────────────────────────────────────────────┤
 │ [CRONOS-API] [CRONOS-APP] [CRONOS-INFRA] [CRONOS-BOT]                            │  ← cards de status
 ├────────────┬──────────────────────────────────────────────────────┬──────────────┤
@@ -358,17 +358,18 @@ O terminal mostra a assinatura **GKsegura** em arte ASCII, lista os repositório
 │ Local  +   │ grafo                             ▐ ┃ grafo         ▐ │  commit ou   │
 │ Remoto     │ …                                 ▐ ┃ …             ▐ │  área de     │
 │ PRs        │ ▬▬▬▬▬▬▬▬                            ┃ ▬▬▬▬▬           │  commit      │
-│ Stashes    │                                     ┃                 │  (WIP)       │
-│ Tags   +   │                                     ┃                 │              │
-│ GKsegura © │                                     ┃                 │              │
+│ Stashes    ├─────────────────────────────────────────────────────┤  (WIP)       │
+│ Tags   +   │ ● CRONOS-API ✕  + ▾      terminal (Ctrl+`)        — │              │
+│ GKsegura © │ $ git status                                         │              │
 └────────────┴──────────────────────────────────────────────────────┴──────────────┘
 ```
 
-- **Topo**: menu do workspace (`workspace cronos ▾`: recentes, clonar, novo, abrir, fechar), filtro, atualizar e a **conta do GitHub**.
+- **Topo**: menu do workspace (`workspace cronos ▾`: recentes, clonar, novo, abrir, fechar), filtro, atualizar, o **aviso de atualização** do app (quando há versão nova) e a **conta do GitHub**.
 - **Cards de status**: branch, `↑`/`↓` em relação ao remoto, staged/modificados/novos, última tag e idade do último commit. O selo **limpo** ou **N alterações** mostra quem tem trabalho pendente.
 - **Barra de cada painel**: nome do repo, **seletor de branch** (`⎇ main ▾`), **botão de sync** (`Fetch` / `Pull ↓n` / `Push ↑n` / `Publicar`), menu **`⋯`** de ações e **✕** para ocultar.
 - **Barra lateral**: escolhe quais repos aparecem e mostra, do repo em foco, as branches locais e remotas, **Pull Requests**, **Stashes** e **Tags**. No rodapé fica a assinatura e a versão.
 - **Painel direito**: detalhe do commit selecionado, ou a área de commit (linha `// WIP`).
+- **Terminal integrado** (embaixo dos grafos, `` Ctrl+` ``): um Git Bash por aba, cada um na pasta de um repo (seção 16).
 
 > 💡 **Clique direito** funciona em quase tudo: commits, branches (no grafo, na lateral e no seletor), tags, arquivos alterados e stashes.
 
@@ -413,7 +414,7 @@ Variações:
 
 - **Emendar o último commit**: marque *"Emendar o último commit (amend)"*. A mensagem anterior é carregada. Dá pra só corrigir a mensagem ou incluir arquivos esquecidos.
 - **Desfazer o último commit**: o link embaixo do botão tira o commit do histórico e devolve as alterações ao stage, com a mensagem preenchida. Só funciona se o commit **ainda não foi enviado** ao remoto; se já foi, use **Reverter** (seção 10).
-- **Descartar** no app desktop manda os arquivos para a **Lixeira do Windows**, dá pra recuperar. No navegador (CLI), a ação é definitiva e o Hydra pede confirmação.
+- **Descartar** sempre pede confirmação. No app desktop, os arquivos vão para a **Lixeira do Windows** e dá pra recuperar; no navegador (CLI), a ação é definitiva.
 
 ### 7. Trabalhando com branches
 
@@ -434,10 +435,10 @@ Tudo começa no **seletor de branch** da barra do painel (`⎇ main ▾`):
 
 Se a branch tiver commits que **não estão em nenhuma outra branch**, o Hydra avisa e pede uma segunda confirmação antes de apagar. Uma branch que só existe no remoto (lista **Remoto** da barra lateral) pode ser apagada com clique direito → **Excluir do remoto…**. Não dá para excluir a branch em que você está: troque de branch antes.
 
-**Trocar de branch com alterações não commitadas:** o Hydra pergunta o que fazer:
+**Trocar de branch com alterações não commitadas:** o Hydra pergunta o que fazer (ex.: indo de `main` para `feature`):
 
-- **Deixar na branch atual**: as alterações são guardadas num stash. Quando você **voltar** para essa branch, o Hydra pergunta se quer restaurá-las;
-- **Levar para a outra branch**: as alterações vão junto. Se conflitarem com a outra branch, o git recusa e nada é perdido.
+- **Deixar em main**: as alterações são guardadas num stash. Quando você **voltar** para a `main`, o Hydra pergunta se quer restaurá-las;
+- **Levar para feature**: as alterações vão junto. Se conflitarem com a outra branch, o git recusa a troca e nada é perdido.
 
 ### 8. Sincronizando com o remoto (fetch, pull, push)
 
@@ -548,7 +549,7 @@ A troca é feita **dentro do Hydra**:
 
 - **Menu do topo** (`workspace cronos ▾`): **Recentes**, *Clonar…*, *Novo repositório…*, *Abrir workspace…* (`Ctrl+O`), *Abrir repositório ou pasta…* (app), *Tela inicial* e *Fechar workspace*.
 - **Tela inicial**: recentes (o **✕** tira da lista, sem apagar nada), cartões ou colar o caminho.
-- **Menu do app** (`Alt`): **Arquivo** e **Repositório**.
+- **Menu do app** (`Alt`): **Arquivo**, **Repositório**, **Exibir** e **Ajuda** (conta do GitHub, procurar atualizações, notas da versão, sobre).
 
 Cada workspace guarda **o seu próprio layout**.
 
@@ -582,11 +583,13 @@ O `name` é opcional e vira o título do painel. O nome do arquivo vira o nome d
 
 ### 15. Atalhos para seus projetos favoritos (opcional)
 
-**App desktop:** crie um atalho do `.exe` e, nas **Propriedades → Destino**, acrescente o caminho:
+**App desktop:** crie um atalho do Hydra (clique direito na Área de Trabalho → *Novo → Atalho*) e, em **Destino**, coloque o executável seguido do caminho do projeto:
 
 ```
-"C:\Ferramentas\Hydra-<versão>-portable.exe" "C:\Users\José\Documents\GitHub\CRONOS\cronos.code-workspace"
+"%LOCALAPPDATA%\Programs\hydra-git\Hydra.exe" "C:\Users\José\Documents\GitHub\CRONOS\cronos.code-workspace"
 ```
+
+Com o portátil, use o caminho do `.exe` portátil no lugar (ex.: `"C:\Ferramentas\Hydra-<versão>-portable.exe" "…"`).
 
 **CLI:** no PowerShell (`notepad $PROFILE`):
 
@@ -616,13 +619,13 @@ function cronos { hydra "C:\Users\José\Documents\GitHub\CRONOS\cronos.code-work
 - **App desktop:** feche a janela; o servidor interno e os terminais param junto.
 - **CLI:** **Ctrl+C** no terminal do Hydra.
 
-Nada fica rodando em segundo plano. O Hydra só altera seus repositórios quando você pede pela interface.
+Nada fica rodando em segundo plano. O Hydra só altera seus repositórios quando você pede: pela interface ou pelos comandos que você digita no terminal integrado.
 
 ### Problemas comuns
 
 | Sintoma | Causa / solução |
 |---|---|
-| *"O Windows protegeu o computador"* ao abrir o `.exe` | O executável não é assinado. **Mais informações → Executar assim mesmo** |
+| *"O Windows protegeu o computador"* ao rodar o instalador ou o portátil | O executável não é assinado. **Mais informações → Executar assim mesmo** (só na primeira vez) |
 | App avisa *"Git não encontrado"* | Instale o Git (<https://git-scm.com>) e abra o Hydra de novo |
 | *"Falha de autenticação no remoto"* | Entre com o GitHub no Hydra, ou rode um `git fetch` no terminal uma vez para o Git Credential Manager pedir o login |
 | *"O remoto tem commits que você ainda não tem"* ao dar push | Faça **Pull** primeiro (e resolva conflitos, se houver) |
@@ -681,7 +684,7 @@ Abra `http://localhost:5173/?t=<token>` usando o mesmo token do terminal 1.
 
 ### Testes
 
-`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Também abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
+`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Confere a comparação de versões usada no aviso de atualização e abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
 
 ### Commits, versões e releases
 
@@ -710,7 +713,8 @@ O app é uma "casca" Electron em volta do mesmo Hydra do CLI:
 2. A **interface** é exatamente a mesma do navegador.
 3. O **preload** (`electron/preload.ts`) expõe só cinco funções: o seletor nativo, o caminho real de arquivos arrastados, as ações do menu do app e o aviso de atualização (receber o estado e "reiniciar agora").
 4. O processo principal fornece ao servidor o **cofre do token** (`safeStorage`/DPAPI) e a **Lixeira** (usada ao descartar).
-5. O `esbuild` junta `electron/` + `src/` em `dist-electron/`, e o `electron-builder` empacota isso, a interface (`web/dist`), o Express, o `ws` e o `node-pty` num `.exe` portátil. O `node-pty` fica fora do `app.asar` (`asarUnpack`), porque o `conpty.dll` e os binários nativos precisam existir em disco. Como ele é N-API, o mesmo binário pré-compilado serve para o Node e para o Electron (`npmRebuild: false`, sem precisar de Visual Studio).
+5. O `esbuild` junta `electron/` + `src/` em `dist-electron/`, e o `electron-builder` empacota isso, a interface (`web/dist`), o Express, o `ws`, o `electron-updater` e o `node-pty` no **instalador** (NSIS) e no **`.exe` portátil**. O `node-pty` fica fora do `app.asar` (`asarUnpack`), porque o `conpty.dll` e os binários nativos precisam existir em disco. Como ele é N-API, o mesmo binário pré-compilado serve para o Node e para o Electron (`npmRebuild: false`, sem precisar de Visual Studio).
+6. O **atualizador** (`electron/updater.ts`) roda só no app empacotado. No instalado, o `electron-updater` consulta o `latest.yml` da última Release, baixa o instalador novo, confere o sha512 e instala ao reiniciar. No portátil, ele só consulta a API de Releases e avisa.
 
 ### Estrutura
 
@@ -735,7 +739,9 @@ hydra/
 │  ├─ github-session.ts        # conta conectada (token, usuário, login em andamento)
 │  ├─ secrets.ts · config.ts   # onde o token fica · Client ID do OAuth App
 │  ├─ workspace.ts · recents.ts · data.ts · layout.ts · render.ts · version.ts · http.ts
-├─ electron/                   # app desktop (janela, menus, seletor, cofre, lixeira)
+├─ electron/                   # app desktop
+│  ├─ main.ts                  # janela, menus, seletor nativo, cofre do token, lixeira
+│  ├─ preload.ts               # a ponte (5 funções) entre a interface e o sistema
 │  └─ updater.ts               # atualizações: electron-updater (instalado) ou aviso (portátil)
 ├─ web/src/                    # front-end (Vue 3 + TypeScript + Vite)
 │  ├─ App.vue · main.ts        # layout, atalhos, menus do app · banner GKsegura no console
@@ -744,12 +750,13 @@ hydra/
 │  ├─ api.ts · types.ts · graph.ts · utils.ts
 │  └─ components/              # GraphPane, BranchMenu, SyncButton, ConflictResolver,
 │     │                        # OperationBanner, ContextMenu, SideBar, WipPanel, WelcomeScreen,
-│     │                        # TerminalDock (painel e abas) e TerminalView (xterm.js)…
+│     │                        # TerminalDock (painel e abas), TerminalView (xterm.js),
+│     │                        # UpdateNotice (aviso de atualização)…
 │     └─ dialogs/              # criar/renomear/excluir branch, merge, clonar, novo repo,
 │                              # publicar, tag, stash, GitHub, confirmação
-├─ test/                       # Vitest: operações git em repositórios temporários e terminal
+├─ test/                       # Vitest: operações git em repositórios temporários, terminal e versões
 ├─ scripts/ · build/icon.svg   # build do Electron e ícone
-├─ .github/workflows/ci.yml    # testes, semantic-release e .exe na Release
+├─ .github/workflows/ci.yml    # testes, semantic-release e instalador + portátil + latest.yml na Release
 ├─ .releaserc.json · CHANGELOG.md · LICENSE
 └─ package.json                # inclui a configuração do electron-builder ("build")
 ```
@@ -780,7 +787,7 @@ Todas as rotas exigem o header `x-hydra-token` (o stream de progresso aceita `?t
 | Leitura do repo | `GET /api/repos/:id/{graph,status,branches,remotes,operation,pulls,last-commit}` · `GET …/commit/:hash` · `GET …/commit/:hash/diff?file=` · `GET …/diff?file=&staged=` |
 | Commits | `POST …/{stage,unstage,commit,amend,undo,revert,cherry-pick,discard}` |
 | Branches | `POST …/branches` · `…/branches/{checkout,rename,delete,delete-remote}` · `…/checkout-commit` |
-| Sync (jobs) | `POST …/{fetch,pull,push,publish}` |
+| Sync (jobs) | `POST …/{fetch,pull,push,publish}` · `POST …/remotes` (conectar um `origin`, usado no "Publicar" manual) |
 | Merge e conflitos | `GET …/merge/preview?branch=` · `POST …/merge` · `POST …/operation/{abort,continue}` · `GET …/conflicts/file?path=` · `POST …/conflicts/resolve` |
 | Stash e tags | `POST …/stashes` · `…/stashes/{apply,drop}` · `POST …/tags` · `…/tags/{push,delete}` |
 | Outros | `POST …/open` (VS Code/Explorer/terminal externo) · `GET …/compare-url` |
