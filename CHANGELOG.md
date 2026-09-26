@@ -2,6 +2,13 @@
 
 Este arquivo é mantido automaticamente pelo [semantic-release](https://github.com/semantic-release/semantic-release) a partir dos commits convencionais (`feat:`, `fix:`, …) na branch `main`.
 
+# [1.1.0](https://github.com/GKsegura/hydra/compare/v1.0.0...v1.1.0) (2026-09-26)
+
+
+### Features
+
+* **terminal:** adiciona terminal integrado estilo Git Bash ([d18f825](https://github.com/GKsegura/hydra/commit/d18f825bd0525b443be51b338937d8e8b995a337))
+
 # 1.0.0 (2026-09-26)
 
 
