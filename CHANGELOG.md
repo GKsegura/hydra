@@ -2,6 +2,18 @@
 
 Este arquivo é mantido automaticamente pelo [semantic-release](https://github.com/semantic-release/semantic-release) a partir dos commits convencionais (`feat:`, `fix:`, …) na branch `main`.
 
+# [1.5.0](https://github.com/GKsegura/hydra/compare/v1.4.0...v1.5.0) (2026-09-26)
+
+
+### Bug Fixes
+
+* **desktop:** mensagens claras ao procurar atualizações ([ed2d225](https://github.com/GKsegura/hydra/commit/ed2d2255386653e3be8a6aa8cb85a6ed69374f0b))
+
+
+### Features
+
+* **timeline:** opção de mostrar só a timeline ([1945e20](https://github.com/GKsegura/hydra/commit/1945e20320f3c0b731b9e1ff0b3c60a211864737))
+
 # [1.4.0](https://github.com/GKsegura/hydra/compare/v1.3.0...v1.4.0) (2026-09-26)
 
 
