@@ -708,3 +708,11 @@ a { color: var(--accent); }
 .steps .row-input { margin-top: 6px; }
 .steps input { flex: 1; min-width: 0; height: 32px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; color: var(--text); font: 12.5px var(--mono); padding: 0 9px; outline: 0; }
 .steps input:focus { border-color: var(--accent); }
+
+/* ---------------------------------------------------------------- aviso de atualização (app desktop) */
+
+.update-chip { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; white-space: nowrap; }
+.update-chip.muted { color: var(--muted); }
+.update-chip.ready { padding: 3px 4px 3px 12px; border: 1px solid rgba(52, 214, 166, .35); border-radius: 999px; background: rgba(52, 214, 166, .08); }
+.update-chip.ready b { color: var(--ok); font-weight: 600; }
+.update-chip a.btn { text-decoration: none; }

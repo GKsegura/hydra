@@ -1,10 +1,11 @@
 <!-- Hydra — © 2026 José Segura (GKsegura) · MIT -->
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { BOOT, IS_STATIC } from '../api.ts';
+import { BOOT, desktop, IS_STATIC } from '../api.ts';
 import { matches, refresh, state } from '../store.ts';
 import AppIcon from './AppIcon.vue';
 import GitHubAccount from './GitHubAccount.vue';
+import UpdateNotice from './UpdateNotice.vue';
 import WorkspaceMenu from './WorkspaceMenu.vue';
 
 const input = ref<HTMLInputElement>();
@@ -45,6 +46,7 @@ function clear(ev: KeyboardEvent) {
       <span class="muted">{{ count }}</span>
     </label>
     <button v-if="!IS_STATIC && state.summary && !state.welcome" class="btn ghost" title="Atualizar (F5)" @click="refresh"><AppIcon name="refresh" /> Atualizar</button>
+    <UpdateNotice v-if="desktop" />
     <GitHubAccount v-if="!IS_STATIC" />
     <span class="mode" :class="{ live: !IS_STATIC }">{{ IS_STATIC ? `estático · ${generated}` : '● ao vivo' }}</span>
   </header>

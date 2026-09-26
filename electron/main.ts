@@ -15,6 +15,7 @@ import path from 'node:path';
 import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, screen, shell } from 'electron';
 import type { SecretStore } from '../src/secrets.ts';
 import type { RunningServer, ServerOptions } from '../src/server.ts';
+import { createUpdater, RELEASES_URL, type Updater, type UpdateState } from './updater.ts';
 
 // O front compilado: dentro do pacote fica em resources/web; em desenvolvimento, em web/dist.
 process.env.HYDRA_WEB_DIR ??= app.isPackaged
@@ -26,6 +27,7 @@ const { startServer } = await import('../src/server.ts');
 
 let win: BrowserWindow | null = null;
 let server: RunningServer | null = null;
+let updater: Updater | null = null;
 
 // ------------------------------------------------------------------ utilidades
 
@@ -61,6 +63,12 @@ function secretStore(): SecretStore {
 /** Envia uma ação de menu para a interface (que abre o diálogo certo). */
 function menuAction(action: string) {
   win?.webContents.send('hydra:menu', action);
+}
+
+/** Encerra os shells do terminal integrado e o servidor local (ao fechar ou antes de instalar uma atualização). */
+function shutdown() {
+  server?.terminals.killAll();
+  if (server?.server.listening) server.server.close();
 }
 
 function gitAvailable(): Promise<boolean> {
@@ -168,6 +176,13 @@ function buildMenu() {
         { label: 'Hydra no GitHub', click: () => shell.openExternal('https://github.com/GKsegura/hydra') },
         { type: 'separator' },
         {
+          label: 'Procurar atualizações…',
+          enabled: app.isPackaged,
+          click: () => updater?.check(true),
+        },
+        { label: 'Notas da versão', click: () => shell.openExternal(`${RELEASES_URL}/tag/v${app.getVersion()}`) },
+        { type: 'separator' },
+        {
           label: 'Sobre o Hydra',
           click: () => dialog.showMessageBox(win!, {
             type: 'info', title: 'Sobre o Hydra',
@@ -270,14 +285,24 @@ if (!app.requestSingleInstanceLock()) {
       dialog.showErrorBox('Não foi possível abrir', (err as Error).message);
     }
 
+    // Atualizações: só no app empacotado (instalado ou portátil). O estado vai para o aviso no topo da janela.
+    ipcMain.handle('hydra:update-state', (): UpdateState => updater?.state() ?? { state: 'idle' });
+    ipcMain.handle('hydra:update-install', () => updater?.install());
+    if (app.isPackaged) {
+      updater = createUpdater({
+        window: () => win,
+        send: (state) => win?.webContents.send('hydra:update', state),
+        beforeInstall: shutdown,
+      });
+    }
+
     buildMenu();
     createWindow(server.url);
     console.log(`Hydra rodando em ${server.url}`);
   });
 
   app.on('window-all-closed', () => {
-    server?.terminals.killAll();
-    server?.server.close();
+    shutdown();
     app.quit();
   });
 }

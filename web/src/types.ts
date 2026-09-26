@@ -63,7 +63,16 @@ export interface DesktopBridge {
   pickWorkspace(kind: 'file' | 'folder'): Promise<string | null>;
   pathForFile(file: File): string;
   onMenu(callback: (action: string) => void): void;
+  onUpdate(callback: (state: UpdateState) => void): void;
+  installUpdate(): Promise<void>;
 }
+
+/** Atualização do app desktop (instalado: baixa e instala; portátil: só avisa). Espelha electron/updater.ts. */
+export type UpdateState =
+  | { state: 'idle' }
+  | { state: 'downloading'; version: string; percent: number }
+  | { state: 'ready'; version: string }
+  | { state: 'available'; version: string; url: string };
 
 export interface Boot {
   mode: 'server' | 'static';

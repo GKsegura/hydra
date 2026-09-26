@@ -43,7 +43,7 @@
     "test:watch": "vitest",
     "desktop:compile": "vite build && node scripts/build-electron.mjs",
     "desktop": "npm run desktop:compile && electron .",
-    "desktop:build": "npm run desktop:compile && node scripts/make-icon.mjs && electron-builder --win portable --publish never"
+    "desktop:build": "npm run desktop:compile && node scripts/make-icon.mjs && electron-builder --win --publish never"
   },
   "build": {
     "appId": "dev.gksegura.hydra",
@@ -70,6 +70,12 @@
     "win": {
       "target": [
         {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
           "target": "portable",
           "arch": [
             "x64"
@@ -78,14 +84,31 @@
       ],
       "icon": "build/icon.png"
     },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "Hydra-Setup-${version}.${ext}",
+      "shortcutName": "Hydra",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false
+    },
     "portable": {
       "artifactName": "Hydra-${version}-portable.exe"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "GKsegura",
+        "repo": "hydra"
+      }
+    ]
   },
   "engines": {
     "node": ">=22.18"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "express": "^5.1.0",
     "ws": "^8.22.0"
   },
