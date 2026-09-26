@@ -23,6 +23,7 @@ export const state = reactive({
   graphs: {} as Record<string, RepoGraph>,
   visible: [] as string[], // repos com painel aberto, na ordem do workspace
   sizes: {} as Record<string, number>, // flex-grow de cada painel
+  timeline: false, // painel "Timeline unificada" (commits de todos os repos visíveis numa linha do tempo só)
   active: null as string | null, // repo em foco (detalhe, sidebar, teclado)
   selected: null as Selection | null,
   filter: '',
@@ -122,13 +123,13 @@ const layoutKey = () => `hydra:${state.summary?.name}:layout`;
 
 export function saveLayout() {
   try {
-    localStorage.setItem(layoutKey(), JSON.stringify({ visible: state.visible, sizes: state.sizes, active: state.active }));
+    localStorage.setItem(layoutKey(), JSON.stringify({ visible: state.visible, sizes: state.sizes, active: state.active, timeline: state.timeline }));
   } catch {
     /* storage bloqueado: só não lembramos o layout */
   }
 }
 
-function readLayout(): { visible?: string[]; sizes?: Record<string, number>; active?: string } | null {
+function readLayout(): { visible?: string[]; sizes?: Record<string, number>; active?: string; timeline?: boolean } | null {
   try {
     return JSON.parse(localStorage.getItem(layoutKey()) || 'null');
   } catch {
@@ -208,6 +209,16 @@ export async function showRepo(id: string) {
   saveLayout();
 }
 
+/** Id do painel da timeline unificada na lista de painéis (não é um repo). */
+export const TIMELINE = '__timeline';
+
+/** Liga/desliga o painel "Timeline unificada". A escolha fica salva no layout do workspace. */
+export function setTimeline(on: boolean) {
+  state.timeline = on;
+  if (!on) delete state.sizes[TIMELINE];
+  saveLayout();
+}
+
 export function hideRepo(id: string) {
   state.visible = state.visible.filter((x) => x !== id);
   if (state.active === id || state.selected?.repoId === id) {
@@ -255,6 +266,7 @@ export async function refresh() {
       state.visible = saved?.visible?.filter((x) => ids.includes(x)) ?? [];
       if (!state.visible.length) state.visible = [...ids];
       state.sizes = saved?.sizes ?? {};
+      state.timeline = !!saved?.timeline;
       state.active = saved?.active && state.visible.includes(saved.active) ? saved.active : state.visible[0] ?? null;
     } else {
       state.visible = state.visible.filter((x) => ids.includes(x));
@@ -291,6 +303,7 @@ function resetWorkspaceState() {
   state.graphs = {};
   state.visible = [];
   state.sizes = {};
+  state.timeline = false;
   state.active = null;
   state.selected = null;
   state.drafts = {};

@@ -716,3 +716,27 @@ a { color: var(--accent); }
 .update-chip.ready { padding: 3px 4px 3px 12px; border: 1px solid rgba(52, 214, 166, .35); border-radius: 999px; background: rgba(52, 214, 166, .08); }
 .update-chip.ready b { color: var(--ok); font-weight: 600; }
 .update-chip a.btn { text-decoration: none; }
+
+/* ---------------------------------------------------------------- timeline unificada */
+
+.side-flag { padding-left: 14px; color: var(--muted); }
+.side-flag:hover { color: var(--text); }
+
+.pane.timeline { border-top-color: transparent; }
+.pane.timeline .graph-scroll { --tl-cols: var(--lanes-w) minmax(180px, 1fr) 110px 120px 90px; }
+.pane.timeline .row,
+.pane.timeline .graph-head,
+.pane.timeline .graph-inner { grid-template-columns: var(--tl-cols); min-width: calc(var(--lanes-w) + 500px); }
+.pane.timeline .graph-head > .h-lanes { padding: 0 6px; }
+.pane.timeline .c-lanes { padding: 0; }
+.tl-icon { width: 15px; height: 15px; flex: none; fill: var(--accent); stroke: var(--muted); stroke-width: 1.3; stroke-linecap: round; }
+.tl-count { color: var(--faint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+.tl-svg { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1; }
+.tl-svg line { stroke-width: 1.5; opacity: .35; }
+.tl-svg circle { stroke: var(--bg); stroke-width: 1.5; }
+.tl-svg circle.dim { opacity: .25; }
+.tl-repo {
+  display: inline-block; max-width: 100%; padding: 1px 7px; border-radius: 4px; font-size: 11.5px;
+  overflow: hidden; text-overflow: ellipsis; vertical-align: middle;
+  background: color-mix(in srgb, var(--c) 18%, var(--bg)); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
+}

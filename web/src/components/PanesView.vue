@@ -1,13 +1,18 @@
 <!-- Hydra — © 2026 José Segura (GKsegura) · MIT -->
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { saveLayout, state } from '../store.ts';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { saveLayout, state, TIMELINE } from '../store.ts';
 import { MIN_PANE } from '../utils.ts';
 import GraphPane from './GraphPane.vue';
+import TimelinePane from './TimelinePane.vue';
 
 const SPLITTER = 6;
 const box = ref<HTMLElement>();
 const dragging = ref<number | null>(null);
+
+// Os painéis na ordem da tela: os repos visíveis e, com a flag ligada, a timeline unificada no fim.
+// Divisórias, "Igualar" e o ajuste à largura tratam a timeline como mais um painel.
+const paneIds = computed(() => (state.timeline ? [...state.visible, TIMELINE] : state.visible));
 
 /**
  * Distribui a largura disponível entre os painéis, mantendo a proporção atual.
@@ -15,7 +20,7 @@ const dragging = ref<number | null>(null);
  */
 function fit() {
   const el = box.value;
-  const ids = state.visible;
+  const ids = paneIds.value;
   if (!el || !ids.length) return;
   const available = el.clientWidth - SPLITTER * (ids.length - 1);
   const known = ids.map((id) => state.sizes[id]).filter((n): n is number => !!n);
@@ -32,8 +37,8 @@ function fit() {
 function startResize(i: number, ev: PointerEvent) {
   if (ev.button !== 0) return;
   ev.preventDefault();
-  const leftId = state.visible[i - 1];
-  const rightId = state.visible[i];
+  const leftId = paneIds.value[i - 1];
+  const rightId = paneIds.value[i];
   const lw = state.sizes[leftId] ?? MIN_PANE;
   const rw = state.sizes[rightId] ?? MIN_PANE;
   const startX = ev.clientX;
@@ -80,17 +85,17 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect());
 
 watch(
-  () => [state.visible.join('|'), Object.keys(state.sizes).length === 0] as const,
+  () => [paneIds.value.join('|'), Object.keys(state.sizes).length === 0] as const,
   () => nextTick(fit),
 );
 </script>
 
 <template>
   <div ref="box" class="panes">
-    <div v-if="!state.visible.length" class="panes-empty">
+    <div v-if="!paneIds.length" class="panes-empty">
       Nenhum repositório visível.<br>Marque algum na barra lateral ou clique num card.
     </div>
-    <template v-for="(id, i) in state.visible" :key="id">
+    <template v-for="(id, i) in paneIds" :key="id">
       <div
         v-if="i > 0"
         class="splitter"
@@ -99,7 +104,8 @@ watch(
         @pointerdown="startResize(i, $event)"
         @dblclick="equalizeNow"
       />
-      <GraphPane :repo-id="id" :width="state.sizes[id] ?? MIN_PANE" />
+      <TimelinePane v-if="id === TIMELINE" :width="state.sizes[id] ?? MIN_PANE" />
+      <GraphPane v-else :repo-id="id" :width="state.sizes[id] ?? MIN_PANE" />
     </template>
   </div>
 </template>

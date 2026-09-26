@@ -63,7 +63,13 @@ O Hydra foi pensado para:
 ### Organização do espaço
 - **Escolha quais repos aparecem** pelos checkboxes na barra lateral, pelo ✕ no painel ou clicando no card.
 - **Redimensione arrastando as divisórias**. Duplo clique ou **Igualar** divide o espaço igualmente.
-- **O layout é lembrado** (repos visíveis, larguras e repo em foco) separadamente para cada workspace.
+- **O layout é lembrado** (repos visíveis, larguras, repo em foco e a timeline ligada ou não) separadamente para cada workspace.
+
+### Timeline unificada (opcional)
+- Marque **"Timeline unificada"** na barra lateral e um painel extra aparece ao lado dos grafos, com **os commits de todos os repositórios visíveis numa lista só, por data**.
+- Cada repo tem uma faixa na sua cor, e a bolinha do commit fica na faixa dele. Dá pra ver de relance "o que aconteceu no workspace essa semana", sem juntar quatro grafos de cabeça.
+- O filtro (`Ctrl+F`) vale nela também. Clicar num commit abre o detalhe e rola o painel do repo até ele, e o clique direito tem o mesmo menu dos commits.
+- É um painel como os outros: redimensiona pela divisória, entra no **Igualar** e sai pelo **✕** (ou desmarcando a opção).
 
 ### Repositórios e workspaces
 - **Tela inicial** com **Clonar**, **Novo repositório**, **Abrir repositório**, **Abrir workspace** e os **recentes**.
@@ -399,6 +405,17 @@ O layout é lembrado por workspace.
 
 > Dica: filtre por `feature/docker-instalacao` pra ver essa branch nos quatro repos do CRONOS ao mesmo tempo.
 
+**Timeline unificada:** marque **"Timeline unificada"** na barra lateral (abaixo de *Todos / Igualar*). Um painel **Timeline** entra depois dos repos, com os commits de todos os painéis visíveis ordenados por data:
+
+```
+REPOS   MENSAGEM                  REPO          AUTOR   DATA
+● │ │   app: tema escuro          CRONOS-APP    Ana     há 2 h
+│ │ ●   bot: reconexão            CRONOS-BOT    José    há 5 h
+│ ● │   api: docker-compose       CRONOS-API    José    ontem
+```
+
+Esconder um repo tira os commits dele da timeline. Para desligar, use o **✕** do painel ou desmarque a opção. A escolha fica salva por workspace.
+
 ### 6. Fazendo um commit
 
 1. Edite seus arquivos no VS Code e volte para o Hydra: ele **atualiza sozinho** ao receber o foco (ou `F5`).
@@ -653,7 +670,7 @@ Nada fica rodando em segundo plano. O Hydra só altera seus repositórios quando
 | Login do GitHub (quando liberado) | `%APPDATA%\hydra-git\github.bin` (criptografado pelo Windows) | não guarda (usa `GITHUB_TOKEN` ou `gh`) |
 | Tamanho e posição da janela | `%APPDATA%\hydra-git\window.json` | — |
 | O app instalado | `%LOCALAPPDATA%\Programs\hydra-git` (o portátil não instala nada) | — |
-| Layout dos painéis, altura do terminal e pasta de clone | armazenamento local do app | `localStorage` do navegador |
+| Layout dos painéis (inclusive a timeline), altura do terminal e pasta de clone | armazenamento local do app | `localStorage` do navegador |
 
 Nada disso vai para os seus repositórios.
 
@@ -684,7 +701,7 @@ Abra `http://localhost:5173/?t=<token>` usando o mesmo token do terminal 1.
 
 ### Testes
 
-`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Confere a comparação de versões usada no aviso de atualização e abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
+`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Confere a ordenação da timeline unificada, a comparação de versões usada no aviso de atualização e abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
 
 ### Commits, versões e releases
 
@@ -747,11 +764,12 @@ hydra/
 │  ├─ App.vue · main.ts        # layout, atalhos, menus do app · banner GKsegura no console
 │  ├─ store.ts · actions.ts    # estado reativo · ações git no estilo GitHub Desktop
 │  ├─ terminal.ts              # abas do terminal integrado (abrir, fechar, Ctrl+`)
+│  ├─ timeline.ts              # junta e ordena os commits dos repos para a timeline unificada
 │  ├─ api.ts · types.ts · graph.ts · utils.ts
 │  └─ components/              # GraphPane, BranchMenu, SyncButton, ConflictResolver,
 │     │                        # OperationBanner, ContextMenu, SideBar, WipPanel, WelcomeScreen,
 │     │                        # TerminalDock (painel e abas), TerminalView (xterm.js),
-│     │                        # UpdateNotice (aviso de atualização)…
+│     │                        # UpdateNotice (aviso de atualização), TimelinePane…
 │     └─ dialogs/              # criar/renomear/excluir branch, merge, clonar, novo repo,
 │                              # publicar, tag, stash, GitHub, confirmação
 ├─ test/                       # Vitest: operações git em repositórios temporários, terminal e versões
@@ -841,7 +859,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - [ ] **Stage parcial**: escolher trechos/linhas do diff para o commit
 - [ ] **Commit em vários repos de uma vez** com a mesma mensagem (ex.: a mesma feature nos 4 repos do CRONOS)
 - [ ] **Branches cross-repo**: criar/trocar/mergear a mesma branch em todos os repos do workspace
-- [ ] **Timeline unificada**: todos os commits do workspace numa linha do tempo só
+- [x] **Timeline unificada**: todos os commits do workspace numa linha do tempo só (opcional, ligada pela barra lateral)
 - [ ] Rebase interativo visual
 - [ ] Atualização em tempo real (observar o `.git` em vez de atualizar no foco)
 - [x] Instalador com atualização automática
