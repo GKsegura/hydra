@@ -86,6 +86,7 @@ O Hydra foi pensado para:
 - **Trocar de branch com alterações pendentes**: você escolhe entre **levar as alterações** ou **deixá-las guardadas** (stash). Ao voltar para a branch, o Hydra oferece restaurar.
 - **Botão de sync inteligente** por repo: `Fetch`, `Pull ↓2`, `Push ↑1`, `Publicar branch` ou `Publicar` (repo sem remoto), com progresso em tempo real.
 - **Pull Requests**: lista dos PRs abertos do repo e **Criar Pull Request** da branch atual, que abre no GitHub.
+- **Branch no workspace**: **criar, trocar e mergear a mesma branch em vários repositórios** de uma vez (ex.: a `feature/docker-instalacao` nos quatro repos do CRONOS). O Hydra mostra antes, repo por repo, o que vai acontecer: onde a branch já existe, onde só está no remoto, quem tem alterações pendentes e quem vai dar conflito no merge. Na barra lateral, um marcador **×3** indica as branches que existem em vários repos.
 
 ### Merge e conflitos
 - **Merge de qualquer branch na atual**, com **prévia antes de começar**: quantos commits entram, se é fast-forward e **quais arquivos vão dar conflito**.
@@ -469,6 +470,18 @@ Se a branch tiver commits que **não estão em nenhuma outra branch**, o Hydra a
 - **Deixar em main**: as alterações são guardadas num stash. Quando você **voltar** para a `main`, o Hydra pergunta se quer restaurá-las;
 - **Levar para feature**: as alterações vão junto. Se conflitarem com a outra branch, o git recusa a troca e nada é perdido.
 
+**A mesma branch em vários repositórios:** use **"Branch…"** na barra lateral (ou menu *Repositório → Branch no workspace…*). O diálogo tem três abas, e todas mostram uma linha por repo **antes** de executar:
+
+| Aba | O que faz |
+|---|---|
+| **Criar** | Cria a branch em cada repo marcado, a partir da branch atual (ou de outra, escolhida por repo), e já troca para ela se quiser. Onde ela já existe, o repo é pulado. |
+| **Trocar** | Troca todos para a mesma branch. Por repo aparece se ela é **local**, **só no remoto** (vira local rastreando o remoto) ou **não existe** (marque *criar* para criá-la ali). Repos com alterações pendentes escolhem entre **guardar** (stash) e **levar** as alterações. |
+| **Mergear** | Mergeia a branch escolhida na branch atual de cada repo, com a **prévia** de cada um: *"1 commit · fast-forward"* ou *"⚠ conflito em leia.txt"*. Repos com conflito começam desmarcados; se marcar, o merge para no conflito e você resolve pelo painel do repo (seção 9). |
+
+No fim aparece o relatório por repo (✓ feito, – pulado, ⚠ conflito, ✗ erro). Um repo que falha não desfaz os outros.
+
+> Dica: o marcador **×3** ao lado de uma branch na barra lateral mostra em quantos repos ela existe. Clique nele para abrir a aba **Trocar** já com a branch escolhida.
+
 ### 8. Sincronizando com o remoto (fetch, pull, push)
 
 O **botão de sync** de cada painel mostra a ação mais útil no momento:
@@ -714,7 +727,7 @@ Abra `http://localhost:5173/?t=<token>` usando o mesmo token do terminal 1.
 
 ### Testes
 
-`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Confere o commit no workspace (stage respeitado por repo, "incluir tudo", hook que falha num repo sem afetar os outros, repo com merge pulado), o stage parcial (trecho, linhas soltas, unstage, CRLF e a recusa quando o arquivo muda no meio), o tempo real (um commit feito por fora vira um aviso só, e ruído do `.git/objects` é ignorado), a ordenação da timeline unificada, a comparação de versões usada no aviso de atualização e abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
+`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Confere as branches no workspace (criar pulando onde já existe, trocar com stash, criando onde falta e rastreando branch só remota, prévia e merge com um repo em conflito), o commit no workspace (stage respeitado por repo, "incluir tudo", hook que falha num repo sem afetar os outros, repo com merge pulado), o stage parcial (trecho, linhas soltas, unstage, CRLF e a recusa quando o arquivo muda no meio), o tempo real (um commit feito por fora vira um aviso só, e ruído do `.git/objects` é ignorado), a ordenação da timeline unificada, a comparação de versões usada no aviso de atualização e abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
 
 ### Commits, versões e releases
 
@@ -767,7 +780,7 @@ hydra/
 │  │  └─ index.ts
 │  ├─ jobs.ts                  # operações longas com progresso (clone/fetch/pull/push)
 │  ├─ watch.ts                 # tempo real: observa os repos e avisa o que mudou (com debounce)
-│  ├─ multi.ts                 # operações em vários repos de uma vez (commit no workspace)
+│  ├─ multi.ts                 # operações em vários repos de uma vez (commit e branches no workspace)
 │  ├─ github.ts                # API do GitHub + login por device flow
 │  ├─ github-session.ts        # conta conectada (token, usuário, login em andamento)
 │  ├─ secrets.ts · config.ts   # onde o token fica · Client ID do OAuth App
@@ -818,6 +831,7 @@ Todas as rotas exigem o header `x-hydra-token` (os streams de eventos aceitam `?
 | Grupo | Rotas principais |
 |---|---|
 | App e workspaces | `GET /api/app` · `POST /api/workspace/open` · `POST /api/workspace/close` · `POST /api/recents/remove` · `GET /api/workspace` · `POST /api/workspace/commit` (`{ repos: [{ id, stageAll }], summary, body }` → relatório por repo) |
+| Branches no workspace | `GET /api/workspace/branches` · `POST /api/workspace/branches/{create,checkout,merge-preview,merge}` (cada um com a lista de repos e devolvendo um relatório por repo) |
 | Leitura do repo | `GET /api/repos/:id/{graph,status,branches,remotes,operation,pulls,last-commit}` · `GET …/commit/:hash` · `GET …/commit/:hash/diff?file=` · `GET …/diff?file=&staged=` |
 | Commits | `POST …/{stage,unstage,commit,amend,undo,revert,cherry-pick,discard}` · `POST …/{stage-lines,unstage-lines}` (stage parcial: `{ file, lines, expected }`) |
 | Branches | `POST …/branches` · `…/branches/{checkout,rename,delete,delete-remote}` · `…/checkout-commit` |
@@ -874,7 +888,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - [x] **Terminal integrado**: Git Bash embaixo dos grafos, uma aba por repositório, com o grafo atualizando depois dos comandos
 - [x] **Stage parcial**: escolher trechos/linhas do diff para o commit
 - [x] **Commit em vários repos de uma vez** com a mesma mensagem (ex.: a mesma feature nos 4 repos do CRONOS)
-- [ ] **Branches cross-repo**: criar/trocar/mergear a mesma branch em todos os repos do workspace
+- [x] **Branches cross-repo**: criar/trocar/mergear a mesma branch em todos os repos do workspace
 - [x] **Timeline unificada**: todos os commits do workspace numa linha do tempo só (opcional, ao lado dos grafos ou sozinha)
 - [ ] Rebase interativo visual
 - [x] Atualização em tempo real (observar os repos em vez de atualizar no foco)

@@ -2,9 +2,9 @@
 import { chmodSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { commitMany } from '../src/multi.ts';
+import { branchOverview, checkoutMany, commitMany, createMany, mergeMany, previewMany } from '../src/multi.ts';
 import type { Repo } from '../src/workspace.ts';
-import { cleanup, makeRepo, sh, write } from './helpers.ts';
+import { cleanup, commitFile, makeRemotePair, makeRepo, sh, write } from './helpers.ts';
 
 afterAll(cleanup);
 
@@ -75,5 +75,89 @@ describe('commitMany (commit no workspace)', () => {
     const [r] = await commitMany([{ repo: repoAt('m', dir), stageAll: true }], 'feat: x', '');
     expect(r.outcome).toBe('skipped');
     expect(r.message).toMatch(/andamento/);
+  });
+});
+
+describe('branches em vários repos', () => {
+  const current = (dir: string) => sh(dir, 'branch', '--show-current').trim();
+
+  it('cria a mesma branch em todos e pula onde ela já existe', async () => {
+    const a = makeRepo();
+    const b = makeRepo();
+    sh(b, 'branch', 'feature/x');
+    const results = await createMany([{ repo: repoAt('a', a) }, { repo: repoAt('b', b) }], 'feature/x', true);
+    expect(results.map((r) => r.outcome)).toEqual(['ok', 'skipped']);
+    expect(current(a)).toBe('feature/x');
+    expect(current(b)).toBe('main'); // já existia: não foi trocada
+  });
+
+  it('nome inválido vira erro por repo, sem derrubar a operação', async () => {
+    const a = makeRepo();
+    const [r] = await createMany([{ repo: repoAt('a', a) }], 'nome com..pontos', true);
+    expect(r.outcome).toBe('error');
+  });
+
+  it('troca todos: cria onde não existe, guarda alterações num stash e rastreia branch só remota', async () => {
+    const withBranch = makeRepo();
+    sh(withBranch, 'branch', 'feature/x');
+    const dirty = makeRepo();
+    sh(dirty, 'branch', 'feature/x');
+    write(dirty, 'a.txt', 'trabalho em andamento\n');
+    const missing = makeRepo();
+    const { remote, work } = makeRemotePair();
+    // A branch existe só no remoto do "work".
+    const other = path.join(path.dirname(remote), 'other');
+    sh(path.dirname(remote), 'clone', '-q', remote, other);
+    sh(other, 'checkout', '-q', '-b', 'feature/x');
+    commitFile(other, 'r.txt', 'remoto\n', 'no remoto');
+    sh(other, 'push', '-q', 'origin', 'feature/x');
+    sh(work, 'fetch', '-q');
+
+    const results = await checkoutMany([
+      { repo: repoAt('com', withBranch), mode: 'carry', create: false },
+      { repo: repoAt('sujo', dirty), mode: 'stash', create: false },
+      { repo: repoAt('sem', missing), mode: 'carry', create: true },
+      { repo: repoAt('remoto', work), mode: 'carry', create: false },
+    ], 'feature/x');
+
+    expect(results.map((r) => r.outcome)).toEqual(['ok', 'ok', 'ok', 'ok']);
+    for (const dir of [withBranch, dirty, missing, work]) expect(current(dir)).toBe('feature/x');
+    expect(results[1].message).toMatch(/stash/);
+    expect(sh(dirty, 'stash', 'list')).toMatch(/hydra: alterações de main/);
+    expect(results[3].message).toMatch(/rastreando/);
+    expect(sh(work, 'rev-parse', '--abbrev-ref', 'feature/x@{upstream}').trim()).toBe('origin/feature/x');
+  });
+
+  it('sem "criar", repo sem a branch é pulado', async () => {
+    const a = makeRepo();
+    const [r] = await checkoutMany([{ repo: repoAt('a', a), mode: 'carry', create: false }], 'nao-existe');
+    expect(r.outcome).toBe('skipped');
+    expect(current(a)).toBe('main');
+  });
+
+  it('prévia e merge: um repo mergeia, outro para em conflito, outro não tem a branch', async () => {
+    const clean = makeRepo();
+    sh(clean, 'checkout', '-q', '-b', 'feature/x');
+    commitFile(clean, 'novo.txt', 'feature\n', 'feature');
+    sh(clean, 'checkout', '-q', 'main');
+
+    const conflict = makeRepo();
+    sh(conflict, 'checkout', '-q', '-b', 'feature/x');
+    commitFile(conflict, 'a.txt', 'versão da feature\n', 'feature');
+    sh(conflict, 'checkout', '-q', 'main');
+    commitFile(conflict, 'a.txt', 'versão da main\n', 'main');
+
+    const without = makeRepo();
+    const repos = [repoAt('limpo', clean), repoAt('conflito', conflict), repoAt('sem', without)];
+
+    const preview = await previewMany(repos, 'feature/x');
+    expect(preview[0].preview).toMatchObject({ commits: 1, fastForward: true, conflicts: [] });
+    expect(preview[1].preview?.conflicts).toEqual(['a.txt']);
+    expect(preview[2].reason).toMatch(/não existe/);
+
+    const results = await mergeMany(repos, 'feature/x', false);
+    expect(results.map((r) => r.outcome)).toEqual(['ok', 'conflict', 'skipped']);
+    expect(sh(clean, 'log', '-1', '--format=%s').trim()).toBe('feature');
+    expect((await branchOverview([repoAt('conflito', conflict)]))[0].operation).toBe('merge');
   });
 });

@@ -50,6 +50,7 @@ function runAction(action: string) {
     case 'open-terminal': return needsRepo((r) => openIn(r, 'terminal'));
     case 'terminal': return state.summary ? toggleTerminal() : undefined;
     case 'workspace-commit': return state.summary ? openDialog('workspace-commit') : undefined;
+    case 'workspace-branch': return state.summary ? openDialog('workspace-branch') : undefined;
     case 'open-github': return needsRepo(openOnGitHub);
   }
 }

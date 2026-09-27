@@ -1,7 +1,7 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 import type {
   AppInfo, Boot, BranchInfo, CommitDetail, ConflictFile, GitHubInfo, GitHubRepo, JobEvent, MergePreview, MergeResult,
-  OperationInfo, Progress, PullsInfo, RepoGraph, RepoResult, RepoStatus, TerminalInfo, WorkspaceSummary,
+  OperationInfo, Progress, PullsInfo, RepoBranches, RepoGraph, RepoMergePreview, RepoResult, RepoStatus, TerminalInfo, WorkspaceSummary,
 } from './types.ts';
 
 // No modo servidor o hydra injeta o token no HTML; no `npm run dev` (Vite) ele vem por ?t= na URL.
@@ -75,6 +75,15 @@ export const api = {
   removeRecent: (path: string) => post<AppInfo>('/recents/remove', { path }),
   workspaceCommit: (repos: { id: string; stageAll: boolean }[], summary: string, body: string) =>
     post<{ results: RepoResult[] }>('/workspace/commit', { repos, summary, body }),
+  // branches em vários repos
+  workspaceBranches: () => call<RepoBranches[]>('/workspace/branches'),
+  workspaceCreateBranch: (repos: { id: string; from?: string }[], name: string, checkout: boolean) =>
+    post<{ results: RepoResult[] }>('/workspace/branches/create', { repos, name, checkout }),
+  workspaceCheckout: (repos: { id: string; mode: 'carry' | 'stash'; create: boolean }[], name: string) =>
+    post<{ results: RepoResult[] }>('/workspace/branches/checkout', { repos, name }),
+  workspaceMergePreview: (repos: string[], branch: string) => post<RepoMergePreview[]>('/workspace/branches/merge-preview', { repos, branch }),
+  workspaceMerge: (repos: string[], branch: string, noFastForward: boolean) =>
+    post<{ results: RepoResult[] }>('/workspace/branches/merge', { repos, branch, noFastForward }),
   workspace: async (): Promise<WorkspaceSummary> => (IS_STATIC ? BOOT.data!.summary : call('/workspace')),
 
   // leitura

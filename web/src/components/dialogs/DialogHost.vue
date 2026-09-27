@@ -14,6 +14,7 @@ import MergeDialog from './MergeDialog.vue';
 import PublishDialog from './PublishDialog.vue';
 import RenameBranchDialog from './RenameBranchDialog.vue';
 import StashDialog from './StashDialog.vue';
+import WorkspaceBranchDialog from './WorkspaceBranchDialog.vue';
 import WorkspaceCommitDialog from './WorkspaceCommitDialog.vue';
 
 // Um diálogo por vez; openDialog('tipo', props) em actions.ts escolhe qual.
@@ -31,6 +32,7 @@ const DIALOGS: Record<string, Component> = {
   github: GitHubDialog,
   stash: StashDialog,
   'workspace-commit': WorkspaceCommitDialog,
+  'workspace-branch': WorkspaceBranchDialog,
 };
 </script>
 

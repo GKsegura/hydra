@@ -54,6 +54,17 @@ function jump(type: string, name: string) {
 }
 const has = (type: string, name: string) => refRow.value.has(`${type}:${name}`);
 
+/** Em quantos repos (com grafo carregado) existe uma branch com esse nome, local ou no remoto. */
+const branchRepos = computed(() => {
+  const count = new Map<string, number>();
+  for (const g of Object.values(state.graphs)) {
+    const names = new Set([...g.refs.local, ...g.refs.remote.map((r) => r.slice(r.indexOf('/') + 1))]);
+    for (const n of names) count.set(n, (count.get(n) ?? 0) + 1);
+  }
+  return count;
+});
+const crossCount = (name: string) => branchRepos.value.get(name) ?? 0;
+
 function toggle(id: string, ev: Event) {
   if ((ev.target as HTMLInputElement).checked) showRepo(id);
   else hideRepo(id);
@@ -100,7 +111,10 @@ function stashMenu(ev: MouseEvent, index: number) {
         </div>
         <div v-if="!IS_STATIC && state.summary.repos.length > 1" class="side-actions">
           <button class="btn sm" title="A mesma mensagem de commit em vários repositórios (Ctrl+Shift+Enter)" @click="openDialog('workspace-commit')">
-            Commit no workspace…
+            Commit…
+          </button>
+          <button class="btn sm" title="Criar, trocar ou mergear a mesma branch em vários repositórios" @click="openDialog('workspace-branch')">
+            Branch…
           </button>
         </div>
         <label class="side-item side-flag" title="Um painel extra com os commits de todos os repositórios visíveis, por data">
@@ -135,6 +149,13 @@ function stashMenu(ev: MouseEvent, index: number) {
             @contextmenu="menu($event, 'local', b)"
           >
             <AppIcon name="branch" /><span class="name">{{ b }}</span>
+            <span
+              v-if="!IS_STATIC && crossCount(b) > 1"
+              class="xrepo"
+              :title="`Existe em ${crossCount(b)} repositórios · clique: trocar todos para ela`"
+              @click.stop="openDialog('workspace-branch', { tab: 'checkout', branch: b })"
+              @dblclick.stop
+            >×{{ crossCount(b) }}</span>
             <span v-if="b === status?.branch && status?.upstream && (status.ahead || status.behind)" class="ab">
               <span v-if="status.ahead" class="up">{{ status.ahead }}↑</span><span v-if="status.behind" class="down">{{ status.behind }}↓</span>
             </span>

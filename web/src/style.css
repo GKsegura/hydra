@@ -780,3 +780,17 @@ a { color: var(--accent); }
 .wc-push.enviado { color: var(--ok); }
 .wc-push.falhou { color: var(--danger); }
 .wc-branch { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; }
+
+/* ---------------------------------------------------------------- branch no workspace */
+
+.wb-tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
+.wb-tabs button { border: 0; background: none; color: var(--muted); padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.wb-tabs button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.wb-from { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.wb-from select, .wb-mode { font: inherit; font-size: 12px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 2px 4px; max-width: 170px; }
+.wb-preview { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
+.wb-preview.warn { color: var(--warn); }
+.wb-preview.muted { color: var(--muted); }
+.wc-results li.conflict .wc-icon { color: var(--warn); }
+.xrepo { margin-left: auto; font-size: 10.5px; padding: 0 5px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); cursor: pointer; flex: none; }
+.xrepo:hover { background: var(--accent); color: #fff; }
