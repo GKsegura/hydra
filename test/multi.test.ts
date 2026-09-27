@@ -108,6 +108,9 @@ describe('branches em vários repos', () => {
     // A branch existe só no remoto do "work".
     const other = path.join(path.dirname(remote), 'other');
     sh(path.dirname(remote), 'clone', '-q', remote, other);
+    // Identidade própria do clone: no CI não existe user.name/user.email global.
+    sh(other, 'config', 'user.name', 'Teste Hydra');
+    sh(other, 'config', 'user.email', 'teste@hydra.local');
     sh(other, 'checkout', '-q', '-b', 'feature/x');
     commitFile(other, 'r.txt', 'remoto\n', 'no remoto');
     sh(other, 'push', '-q', 'origin', 'feature/x');
