@@ -27,6 +27,8 @@ export interface TerminalClient {
 interface TermSession {
   id: string;
   repoId: string;
+  /** Workspace dono do terminal (`''` quando quem abriu não informou): fechar o workspace encerra só os dele. */
+  owner: string;
   pty: Pty;
   /** Saída recente, repetida quando a interface reconecta (F5, troca de aba). */
   buffer: string[];
@@ -89,9 +91,10 @@ export class Terminals {
     return { available: !!this.pty, shell: this.pty ? this.shell.name : null };
   }
 
-  spawn(repo: Repo, cols: number, rows: number): { id: string; shell: string } {
+  spawn(repo: Repo, cols: number, rows: number, owner = ''): { id: string; shell: string } {
     if (!this.pty) throw new HttpError(501, 'Terminal indisponível: o módulo node-pty não foi instalado.');
-    if (this.sessions.size >= MAX_TERMINALS) throw new HttpError(429, 'Muitos terminais abertos. Feche algum antes.');
+    const open = [...this.sessions.values()].filter((s) => s.owner === owner).length;
+    if (open >= MAX_TERMINALS) throw new HttpError(429, 'Muitos terminais abertos. Feche algum antes.');
     const shell = this.shell;
     const env: NodeJS.ProcessEnv = {
       ...process.env,
@@ -101,7 +104,7 @@ export class Terminals {
     };
     delete env.ELECTRON_RUN_AS_NODE;
     const pty = this.pty.spawn(shell.file, shell.args, { name: 'xterm-256color', cols: clamp(cols, 80), rows: clamp(rows, 24), cwd: repo.path, env });
-    const session: TermSession = { id: randomBytes(8).toString('hex'), repoId: repo.id, pty, buffer: [], size: 0, clients: new Set() };
+    const session: TermSession = { id: randomBytes(8).toString('hex'), repoId: repo.id, owner, pty, buffer: [], size: 0, clients: new Set() };
     this.sessions.set(session.id, session);
 
     pty.onData((data) => {
@@ -155,9 +158,9 @@ export class Terminals {
     }
   }
 
-  /** Fecha todos os terminais (troca/fechamento do workspace, encerramento do servidor). */
-  killAll() {
-    for (const id of [...this.sessions.keys()]) this.kill(id);
+  /** Fecha os terminais de um dono (fechamento do workspace); sem argumento, todos (encerramento do servidor). */
+  killAll(owner?: string) {
+    for (const [id, s] of [...this.sessions]) if (owner === undefined || s.owner === owner) this.kill(id);
   }
 }
 

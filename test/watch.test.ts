@@ -71,6 +71,40 @@ describe('RepoWatchers', () => {
     expect(changes).toEqual([]);
   });
 
+  it('cada dono (workspace) tem os seus: fechar um não silencia o outro, e o aviso diz de quem é', async () => {
+    const a = makeRepo();
+    const b = makeRepo();
+    watchers = new RepoWatchers();
+    const changes: RepoChange[] = [];
+    watchers.subscribe((c) => changes.push(c));
+    watchers.watch([{ id: 'r1', name: 'a', path: a }], 'wa');
+    watchers.watch([{ id: 'r1', name: 'b', path: b }], 'wb');
+    await wait(200);
+
+    watchers.close('wa');
+    sh(a, 'checkout', '-q', '-b', 'so-a'); // dono fechado: sem aviso
+    commitFile(b, 'b.txt', 'novo\n', 'no b');
+    await until(() => changes.length > 0);
+    await wait(900);
+    expect(changes).toEqual([{ workspaceId: 'wb', repoId: 'r1', kind: 'repo' }]);
+  });
+
+  it('observar de novo o mesmo dono troca só os repos dele', async () => {
+    const a = makeRepo();
+    const a2 = makeRepo();
+    watchers = new RepoWatchers();
+    const changes: RepoChange[] = [];
+    watchers.subscribe((c) => changes.push(c));
+    watchers.watch([{ id: 'r1', name: 'a', path: a }], 'wa');
+    watchers.watch([{ id: 'r2', name: 'a2', path: a2 }], 'wa');
+    await wait(200);
+    sh(a, 'checkout', '-q', '-b', 'antigo'); // já não é observado
+    commitFile(a2, 'x.txt', 'x\n', 'no a2');
+    await until(() => changes.length > 0);
+    await wait(900);
+    expect(changes.every((c) => c.repoId === 'r2')).toBe(true);
+  });
+
   it('depois de close() nada mais é avisado', async () => {
     const dir = makeRepo();
     const changes = observe(dir);

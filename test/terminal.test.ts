@@ -64,6 +64,22 @@ describe.skipIf(!available)('Terminals', () => {
   });
 });
 
+describe.skipIf(!available)('Terminais por workspace', () => {
+  it('killAll(dono) encerra só os terminais daquele workspace', async () => {
+    const dir = makeRepo();
+    const terminals = new Terminals();
+    await terminals.init();
+    const repo = { id: 'r1', name: 'repo', path: dir };
+    const a = terminals.spawn(repo, 80, 24, 'wa').id;
+    const b = terminals.spawn(repo, 80, 24, 'wb').id;
+    terminals.killAll('wa');
+    expect(terminals.has(a)).toBe(false);
+    expect(terminals.has(b)).toBe(true);
+    terminals.killAll();
+    expect(terminals.has(b)).toBe(false);
+  });
+});
+
 describe.skipIf(!available)('WebSocket do terminal', () => {
   it('exige o token e a origem local', async () => {
     const dir = makeRepo();

@@ -26,6 +26,7 @@ import { Terminals } from './terminal.ts';
 import { VERSION } from './version.ts';
 import { RepoWatchers } from './watch.ts';
 import { loadWorkspace, type Repo, type Workspace } from './workspace.ts';
+import { WorkspaceSession } from './workspace-session.ts';
 
 /** Pasta sugerida para clonar/criar repositórios: Documentos\GitHub se existir (padrão do GitHub Desktop). */
 function defaultProjectsDir(): string {
@@ -74,18 +75,22 @@ async function validFiles(repo: Repo, files: unknown): Promise<string[] | 'all'>
   return files as string[];
 }
 
-/** O workspace aberto no momento. Pode ser trocado em tempo real pela API. */
+/**
+ * Os workspaces abertos (as guias), na ordem, e qual está ativo; mais o que é do app inteiro (recentes, sessão salva).
+ * Por enquanto o app só usa um workspace por vez: `open` substitui, a menos que peçam `'add'`.
+ */
 export class Session {
-  ws: Workspace | null = null;
-  private repos = new Map<string, Repo>();
+  private workspaces = new Map<string, WorkspaceSession>();
+  private order: string[] = [];
+  private activeId: string | null = null;
   recents: Recents;
   store: SessionStore;
   /** Aviso pendente (ex.: não deu para reabrir o último workspace); entregue uma vez ao front. */
   private notice: string | null = null;
-  /** Chamado quando o workspace troca ou fecha (ex.: encerrar os terminais do workspace anterior). */
-  onReset: (() => void) | null = null;
+  /** Chamado quando um workspace fecha (ex.: encerrar os terminais e watchers dele). */
+  onClose: ((id: string) => void) | null = null;
   /** Chamado depois que um workspace abre (ex.: começar a observar os repos dele). */
-  onOpen: ((ws: Workspace) => void) | null = null;
+  onOpen: ((workspace: WorkspaceSession) => void) | null = null;
 
   constructor(recentsFile: string, sessionFile = path.join(path.dirname(recentsFile), 'session.json')) {
     this.recents = new Recents(recentsFile);
@@ -113,36 +118,82 @@ export class Session {
     return n;
   }
 
-  /** Abre um workspace (arquivo, pasta ou repo). Lança erro legível se não houver repositórios. */
-  open(target: string): Workspace {
+  /**
+   * Abre um workspace (arquivo, pasta ou repo) e o torna o ativo. Lança erro legível se não houver repositórios.
+   * `'replace'` (padrão) fecha os demais antes; `'add'` mantém os outros e, se este já estiver aberto, só o ativa.
+   */
+  open(target: string, mode: 'replace' | 'add' = 'replace'): Workspace {
     const ws = loadWorkspace(target);
     if (!ws.repos.length) throw new HttpError(400, 'Nenhum repositório git encontrado nesse caminho.');
-    this.onReset?.();
-    this.ws = ws;
-    this.repos = new Map(ws.repos.map((r) => [r.id, r]));
+    const opened = new WorkspaceSession(ws);
+    if (mode === 'add' && this.workspaces.has(opened.id)) {
+      this.activate(opened.id);
+      return this.workspaces.get(opened.id)!.ws;
+    }
+    for (const id of mode === 'replace' ? [...this.order] : [opened.id]) this.closeWorkspace(id, false);
+    this.workspaces.set(opened.id, opened);
+    this.order.push(opened.id);
+    this.activeId = opened.id;
     this.recents.add({ path: ws.source ?? target, name: ws.name });
-    this.store.setSingle(ws.source ?? path.resolve(target));
-    this.onOpen?.(ws);
+    this.persist();
+    this.onOpen?.(opened);
     return ws;
   }
 
+  /** Fecha um workspace: encerra o que é dele (terminais, watchers) e, se era o ativo, passa para um vizinho. */
+  closeWorkspace(id: string, save = true) {
+    if (!this.workspaces.has(id)) return;
+    this.onClose?.(id);
+    this.workspaces.delete(id);
+    const i = this.order.indexOf(id);
+    this.order.splice(i, 1);
+    if (this.activeId === id) this.activeId = this.order[Math.min(i, this.order.length - 1)] ?? null;
+    if (save) this.persist();
+  }
+
+  /** Fecha o workspace ativo. */
   close() {
-    this.store.clear();
-    this.onReset?.();
-    this.ws = null;
-    this.repos.clear();
+    if (this.activeId) this.closeWorkspace(this.activeId);
+  }
+
+  activate(id: string) {
+    if (!this.workspaces.has(id)) throw new HttpError(404, 'Workspace não encontrado');
+    this.activeId = id;
+    this.persist();
+  }
+
+  /** Os workspaces abertos, na ordem das guias. */
+  all(): WorkspaceSession[] {
+    return this.order.map((id) => this.workspaces.get(id)!);
+  }
+
+  get active(): WorkspaceSession | null {
+    return this.activeId ? (this.workspaces.get(this.activeId) ?? null) : null;
+  }
+
+  /** O workspace ativo, ou null. */
+  get ws(): Workspace | null {
+    return this.active?.ws ?? null;
   }
 
   current(): Workspace {
-    if (!this.ws) throw new HttpError(409, 'Nenhum workspace aberto');
-    return this.ws;
+    return this.currentSession().ws;
+  }
+
+  currentSession(): WorkspaceSession {
+    const active = this.active;
+    if (!active) throw new HttpError(409, 'Nenhum workspace aberto');
+    return active;
   }
 
   repo(id: string): Repo {
-    this.current();
-    const repo = this.repos.get(id);
-    if (!repo) throw new HttpError(404, 'Repositório não encontrado');
-    return repo;
+    return this.currentSession().repo(id);
+  }
+
+  /** Grava as guias abertas (ordem e ativa) para reabrir na próxima execução. */
+  private persist() {
+    const tabs = this.all().map((w) => ({ source: w.ws.source ?? w.ws.file ?? w.ws.name }));
+    this.store.write({ tabs, activeTab: Math.max(0, this.order.indexOf(this.activeId ?? '')) });
   }
 }
 
@@ -363,12 +414,12 @@ export async function startServer(target: string | null, opts: ServerOptions): P
   const terminals = new Terminals();
   await terminals.init();
   const watchers = new RepoWatchers();
-  session.onReset = () => {
-    terminals.killAll();
-    watchers.close();
+  session.onClose = (id) => {
+    terminals.killAll(id);
+    watchers.close(id);
   };
-  session.onOpen = (ws) => watchers.watch(ws.repos);
-  if (session.ws) watchers.watch(session.ws.repos); // aberto antes de os ganchos existirem (caminho na linha de comando)
+  session.onOpen = (w) => watchers.watch(w.ws.repos, w.id);
+  for (const w of session.all()) watchers.watch(w.ws.repos, w.id); // abertos antes de os ganchos existirem (caminho na linha de comando)
   const app = createApp(session, opts, token, jobs, github, terminals, watchers);
 
   return new Promise((resolve, reject) => {

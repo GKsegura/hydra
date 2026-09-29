@@ -12,8 +12,8 @@ export function terminalRoutes(ctx: { session: Session; terminals: Terminals }) 
   });
   // A pasta vem do repo do workspace aberto, nunca do corpo da requisição.
   r.post('/repos/:id/terminals', (req, res) => {
-    const repo = ctx.session.repo(String(req.params.id));
-    res.json(ctx.terminals.spawn(repo, req.body?.cols, req.body?.rows));
+    const workspace = ctx.session.currentSession();
+    res.json(ctx.terminals.spawn(workspace.repo(String(req.params.id)), req.body?.cols, req.body?.rows, workspace.id));
   });
   r.delete('/terminals/:tid', (req, res) => {
     ctx.terminals.kill(String(req.params.tid));
