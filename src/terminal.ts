@@ -29,6 +29,8 @@ interface TermSession {
   repoId: string;
   /** Workspace dono do terminal (`''` quando quem abriu não informou): fechar o workspace encerra só os dele. */
   owner: string;
+  /** Nome do shell (Git Bash, PowerShell…), para a interface reencontrar o terminal depois de recarregar. */
+  shell: string;
   pty: Pty;
   /** Saída recente, repetida quando a interface reconecta (F5, troca de aba). */
   buffer: string[];
@@ -104,7 +106,7 @@ export class Terminals {
     };
     delete env.ELECTRON_RUN_AS_NODE;
     const pty = this.pty.spawn(shell.file, shell.args, { name: 'xterm-256color', cols: clamp(cols, 80), rows: clamp(rows, 24), cwd: repo.path, env });
-    const session: TermSession = { id: randomBytes(8).toString('hex'), repoId: repo.id, owner, pty, buffer: [], size: 0, clients: new Set() };
+    const session: TermSession = { id: randomBytes(8).toString('hex'), repoId: repo.id, owner, shell: shell.name, pty, buffer: [], size: 0, clients: new Set() };
     this.sessions.set(session.id, session);
 
     pty.onData((data) => {
@@ -118,6 +120,11 @@ export class Terminals {
       for (const c of session.clients) c.close(4000, `exit ${exitCode}`);
     });
     return { id: session.id, shell: shell.name };
+  }
+
+  /** Os terminais vivos de um dono (workspace), na ordem em que foram abertos. */
+  list(owner: string): { id: string; repoId: string; shell: string }[] {
+    return [...this.sessions.values()].filter((s) => s.owner === owner).map((s) => ({ id: s.id, repoId: s.repoId, shell: s.shell }));
   }
 
   has(id: string): boolean {

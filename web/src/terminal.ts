@@ -3,10 +3,9 @@ import { watch } from 'vue';
 import { api, IS_STATIC } from './api.ts';
 import { repoById, state, toast } from './store.ts';
 
-// A altura do dock vale para todos os workspaces (localStorage). As abas duram só a sessão da página
-// (sessionStorage): num F5/Ctrl+R a interface reconecta aos mesmos shells e repete a saída recente.
+// A altura do dock vale para todos os workspaces (localStorage). A lista de abas de cada guia vem do servidor (os shells
+// sobrevivem a F5/Ctrl+R; a interface reconecta e repete a saída recente): ver loadTerminals em store.ts.
 const PREFS_KEY = 'hydra:terminal';
-const TABS_KEY = 'hydra:terminal-tabs';
 
 function read<T>(storage: () => Storage, key: string): T | null {
   try {
@@ -26,20 +25,15 @@ function write(storage: () => Storage, key: string, value: unknown) {
 
 const prefs = read<{ height?: number }>(() => localStorage, PREFS_KEY);
 if (prefs?.height) state.terminal.height = prefs.height;
-const saved = read<{ tabs: typeof state.terminal.tabs; active: string | null; open: boolean }>(() => sessionStorage, TABS_KEY);
-if (saved?.tabs?.length) {
-  state.terminal.tabs = saved.tabs;
-  state.terminal.active = saved.active;
-  state.terminal.open = saved.open;
+try {
+  sessionStorage.removeItem('hydra:terminal-tabs'); // formato antigo (uma lista só para todos os workspaces)
+} catch {
+  /* storage bloqueado */
 }
 
 watch(
   () => state.terminal.height,
   (height) => write(() => localStorage, PREFS_KEY, { height }),
-);
-watch(
-  () => [state.terminal.tabs.map((t) => t.id).join(), state.terminal.active, state.terminal.open],
-  () => write(() => sessionStorage, TABS_KEY, { tabs: state.terminal.tabs, active: state.terminal.active, open: state.terminal.open }),
 );
 
 export async function loadTerminalInfo() {

@@ -1,5 +1,5 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
-import { reactive } from 'vue';
+import { reactive, watch } from 'vue';
 import { api, desktop, eventsUrl, IS_STATIC, setCurrentWorkspace, setStaleHandler } from './api.ts';
 import type {
   AppInfo, BranchInfo, Commit, ConflictFile, GitHubInfo, OperationInfo, PullsInfo, RepoGraph, RepoStatus, Selection, TerminalInfo,
@@ -342,6 +342,8 @@ export async function refresh() {
       state.graphs = {};
     }
 
+    void loadTerminals(); // em paralelo com os grafos: os shells da guia continuam vivos no servidor
+
     await ensureGraphs(state.visible);
 
     const sel = state.selected;
@@ -445,6 +447,49 @@ function switchTo(id: string | null, save = true): boolean {
     state.app = { ...state.app, active: id, workspace: tab ? { ...tab } : null };
   }
   return load;
+}
+
+// Terminais de cada guia. Os shells vivem no servidor (sobrevivem a F5), então a lista vem de lá; no navegador ficam só as
+// preferências leves da guia (qual estava em foco e se o dock estava aberto), por id da guia.
+const termPrefsKey = (wid: string) => `hydra:terminal-tab:${wid}`;
+
+function readTermPrefs(wid: string): { active?: string | null; open?: boolean } {
+  try {
+    return JSON.parse(sessionStorage.getItem(termPrefsKey(wid)) || 'null') ?? {};
+  } catch {
+    return {};
+  }
+}
+
+watch(
+  // Uma string (e não um array novo a cada leitura): só dispara quando algo mudou de fato, não a cada troca de guia.
+  () => `${state.terminal.tabs.map((t) => t.id).join()}|${state.terminal.active}|${state.terminal.open}`,
+  () => {
+    if (!currentWid) return;
+    try {
+      sessionStorage.setItem(termPrefsKey(currentWid), JSON.stringify({ active: state.terminal.active, open: state.terminal.open }));
+    } catch {
+      /* storage bloqueado: só não lembramos */
+    }
+  },
+);
+
+/** Reencontra os terminais vivos da guia atual (F5, reabertura da guia) e mantém o foco e o dock como estavam. */
+async function loadTerminals() {
+  if (IS_STATIC || !currentWid) return;
+  try {
+    const wid = currentWid;
+    const list = await api.terminals();
+    const prefs = readTermPrefs(wid);
+    const known = new Set(list.map((t) => t.id));
+    const active = [state.terminal.active, prefs.active].find((id): id is string => !!id && known.has(id)) ?? list.at(-1)?.id ?? null;
+    state.terminal.tabs = list;
+    state.terminal.active = active;
+    if (!state.terminal.tabs.length) state.terminal.open = false;
+    else if (prefs.open !== undefined && !state.terminal.open) state.terminal.open = prefs.open;
+  } catch {
+    /* guia trocada no meio, ou servidor sem terminal: a lista local continua valendo */
+  }
 }
 
 /** Id da guia ativa (null = Início). */

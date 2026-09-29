@@ -182,6 +182,7 @@ export const api = {
 
   // terminal integrado (a entrada e a saída passam pelo WebSocket: terminalSocketUrl)
   terminalInfo: () => call<TerminalInfo>('/terminal'),
+  terminals: () => call<{ id: string; repoId: string; shell: string }[]>(`${ws()}/terminals`),
   openTerminal: (id: string, cols: number, rows: number) => post<{ id: string; shell: string }>(`${repo(id)}/terminals`, { cols, rows }),
   closeTerminal: (tid: string) => call(`/terminals/${enc(tid)}`, { method: 'DELETE' }),
 

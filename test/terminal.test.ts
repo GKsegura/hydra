@@ -101,9 +101,20 @@ describe.skipIf(!available)('Terminal em workspace que não é o ativo', () => {
       expect(srv.terminals.has(ta)).toBe(true);
       expect(srv.terminals.has(tb)).toBe(true);
 
+      // GET /w/:wid/terminals lista só os do dono, na ordem de abertura
+      const list = async (wid: string) =>
+        (await (await fetch(`http://127.0.0.1:${srv.port}/api/w/${wid}/terminals`, { headers: { 'x-hydra-token': srv.token } })).json()) as
+          { id: string; repoId: string; shell: string }[];
+      const tc = await spawn(wa);
+      expect((await list(wa)).map((t) => t.id)).toEqual([ta, tc]);
+      expect((await list(wb)).map((t) => t.id)).toEqual([tb]);
+      expect((await list(wa))[0]).toMatchObject({ repoId: srv.session.get(wa)!.ws.repos[0].id, shell: expect.any(String) });
+
       srv.session.closeWorkspace(wa);
       expect(srv.terminals.has(ta)).toBe(false);
+      expect(srv.terminals.has(tc)).toBe(false);
       expect(srv.terminals.has(tb)).toBe(true);
+      expect((await list(wb)).map((t) => t.id)).toEqual([tb]);
     } finally {
       srv.server.close();
     }
