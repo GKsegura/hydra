@@ -10,7 +10,7 @@
  *   © 2026 José Segura · MIT
  */
 import { execFile } from 'node:child_process';
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, screen, shell } from 'electron';
 import type { SecretStore } from '../src/secrets.ts';
@@ -103,6 +103,45 @@ function saveWindowState() {
   } catch {
     /* sem permissão: só não lembramos o tamanho */
   }
+}
+
+// Diagnóstico do renderer: sem isso, "travou" e "caiu" são iguais para o usuário (só o fundo cinza da janela).
+const crashFile = () => path.join(app.getPath('userData'), 'crash.log');
+const CRASH_LOG_MAX = 256 * 1024;
+
+function logDiagnostic(kind: string, details: Record<string, unknown> = {}) {
+  try {
+    const file = crashFile();
+    if (existsSync(file) && statSync(file).size > CRASH_LOG_MAX) rmSync(file, { force: true });
+    const heap = process.memoryUsage();
+    const line = { at: new Date().toISOString(), kind, version: app.getVersion(), ...details, mainHeapMB: Math.round(heap.heapUsed / 1048576) };
+    appendFileSync(file, `${JSON.stringify(line)}\n`);
+  } catch {
+    /* sem permissão de escrita: o diagnóstico é só um extra */
+  }
+}
+
+function watchRenderer(w: BrowserWindow) {
+  w.webContents.on('render-process-gone', (_ev, d) => {
+    logDiagnostic('render-process-gone', { reason: d.reason, exitCode: d.exitCode });
+    if (d.reason === 'clean-exit') return;
+    const choice = dialog.showMessageBoxSync(w, {
+      type: 'error',
+      title: 'Hydra',
+      message: 'A interface do Hydra foi encerrada.',
+      detail: `Motivo: ${d.reason} (código ${d.exitCode}). O registro está em ${crashFile()}.`,
+      buttons: ['Recarregar', 'Fechar'],
+      defaultId: 0,
+      cancelId: 1,
+    });
+    if (choice === 0) w.webContents.reload();
+    else w.close();
+  });
+  w.on('unresponsive', () => logDiagnostic('unresponsive'));
+  w.on('responsive', () => logDiagnostic('responsive'));
+  w.webContents.on('did-fail-load', (_ev, code, desc, url, isMainFrame) => {
+    if (isMainFrame) logDiagnostic('did-fail-load', { code, desc, url });
+  });
 }
 
 // ------------------------------------------------------------------ workspace
@@ -229,6 +268,7 @@ function createWindow(url: string) {
     },
   });
   if (state.maximized) win.maximize();
+  watchRenderer(win);
   win.once('ready-to-show', () => win?.show());
 
   // Tudo que não for o servidor local abre no navegador padrão.
