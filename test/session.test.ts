@@ -76,9 +76,16 @@ describe('Session: restaurar o último workspace', () => {
     restored.server.close();
 
     const other = makeRepo();
+    // Com restore, o caminho da linha de comando é mais uma guia (ativa), sem perder as restauradas.
     const explicit = await startServer(other, { ...base, restore: true });
     expect(path.resolve(explicit.session.ws!.source!)).toBe(path.resolve(other));
+    expect(explicit.session.all().map((w) => w.ws.source)).toEqual([path.resolve(dir), path.resolve(other)]);
     explicit.server.close();
+
+    // Sem restore (CLI), o caminho substitui.
+    const cli = await startServer(other, { ...base });
+    expect(cli.session.all()).toHaveLength(1);
+    cli.server.close();
   });
 });
 

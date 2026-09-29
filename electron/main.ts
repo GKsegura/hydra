@@ -153,11 +153,11 @@ async function pick(kind: 'file' | 'folder'): Promise<string | null> {
   return result.canceled ? null : result.filePaths[0] ?? null;
 }
 
-/** Abre um workspace pelo processo principal (menu, segunda instância) e recarrega a interface. */
+/** Abre um workspace pelo processo principal (segunda instância) em uma nova guia, ou ativa a guia dele, e avisa a interface. */
 function openFromMain(target: string) {
   try {
-    server!.session.open(target);
-    win?.webContents.reload();
+    server!.session.open(target, 'add');
+    menuAction('sync-tabs'); // a interface busca as guias no servidor sem perder o estado das outras
   } catch (err) {
     dialog.showErrorBox('Não foi possível abrir', (err as Error).message);
   }
@@ -176,9 +176,19 @@ function buildMenu() {
         { type: 'separator' },
         { label: 'Abrir workspace…', accelerator: 'CmdOrCtrl+O', registerAccelerator: false, click: () => menuAction('open-file') },
         { label: 'Abrir repositório ou pasta…', click: () => menuAction('open-folder') },
-        { label: 'Fechar workspace', click: () => menuAction('close') },
+        { type: 'separator' },
+        { label: 'Fechar guia', accelerator: 'CmdOrCtrl+W', registerAccelerator: false, click: () => menuAction('close') },
         { type: 'separator' },
         { label: 'Sair', role: 'quit' },
+      ],
+    },
+    {
+      label: 'Guias',
+      submenu: [
+        { label: 'Guia seguinte', accelerator: 'Ctrl+Tab', registerAccelerator: false, click: () => menuAction('next-tab') },
+        { label: 'Guia anterior', accelerator: 'Ctrl+Shift+Tab', registerAccelerator: false, click: () => menuAction('prev-tab') },
+        { type: 'separator' },
+        { label: 'Tela inicial', click: () => menuAction('home') },
       ],
     },
     {

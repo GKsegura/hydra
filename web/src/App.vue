@@ -17,7 +17,8 @@ import WelcomeScreen from './components/WelcomeScreen.vue';
 import WipPanel from './components/WipPanel.vue';
 import TabBar from './components/TabBar.vue';
 import {
-  backToPreviousTab, closeDiff, closeWorkspace, connectEvents, cycleTab, hasWip, moveSelection, openWorkspace, pickWorkspace, refresh, state,
+  activateTab, backToPreviousTab, closeDiff, closeWorkspace, connectEvents, cycleTab, hasWip, moveSelection, openWorkspace, pickWorkspace,
+  refresh, state, syncFromServer,
 } from './store.ts';
 import { loadTerminalInfo, toggleTerminal } from './terminal.ts';
 
@@ -41,6 +42,10 @@ function runAction(action: string) {
     case 'open-file': return pickWorkspace('file');
     case 'open-folder': return pickWorkspace('folder');
     case 'close': return closeWorkspace();
+    case 'next-tab': return cycleTab(1);
+    case 'prev-tab': return cycleTab(-1);
+    case 'home': return activateTab(null);
+    case 'sync-tabs': return syncFromServer();
     case 'github': return openDialog('github');
     case 'fetch': return needsRepo(fetchRepo);
     case 'pull': return needsRepo(pullRepo);

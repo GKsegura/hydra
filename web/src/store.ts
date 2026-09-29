@@ -450,6 +450,12 @@ export async function activateTab(id: string | null) {
   if (load) await refresh();
 }
 
+/** O servidor abriu ou ativou uma guia por conta própria (ex.: segunda instância do app com um caminho): adota a dele. */
+export function syncFromServer() {
+  adoptedServerTab = false;
+  return refresh();
+}
+
 /** Volta para a guia que estava aberta antes (Esc na tela inicial). */
 export function backToPreviousTab() {
   if (previousWid && state.app?.tabs.some((t) => t.id === previousWid)) return activateTab(previousWid);

@@ -496,8 +496,9 @@ export interface RunningServer {
 export async function startServer(target: string | null, opts: ServerOptions): Promise<RunningServer> {
   const token = randomBytes(16).toString('hex');
   const session = new Session(opts.recentsFile ?? defaultRecentsFile(), opts.sessionFile);
-  if (target) session.open(target);
-  else if (opts.restore) session.restore();
+  // Desktop: reabre as guias da sessão anterior e o caminho da linha de comando entra como mais uma guia (ou ativa a dele).
+  if (opts.restore) session.restore();
+  if (target) session.open(target, opts.restore ? 'add' : 'replace');
   const jobs = new Jobs();
   const github = new GitHubSession(opts.secrets ?? memoryStore());
   await github.init();

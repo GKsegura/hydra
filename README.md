@@ -595,7 +595,7 @@ A troca é feita **dentro do Hydra**:
 
 Cada workspace guarda **o seu próprio layout**.
 
-**Dois workspaces ao mesmo tempo?** O app tem **uma janela só**: abrir o `.exe` de novo com um caminho **troca** o workspace da janela aberta. No navegador, rode um segundo `hydra` em outro terminal (ele sobe na porta **4712**).
+**Dois workspaces ao mesmo tempo?** Sim: cada workspace abre em uma **guia** (a guia **Início** é fixa, à esquerda). Abrir o `.exe` de novo com um caminho abre uma nova guia na janela existente (ou ativa a guia dele, se já estiver aberto). Arraste as guias para reordenar; `Ctrl+W` fecha a guia e `Ctrl+Tab` / `Ctrl+Shift+Tab` trocam de guia (no app). Ao abrir o Hydra de novo, todas as guias voltam como estavam, com a mesma guia ativa. No navegador, rode um segundo `hydra` em outro terminal (ele sobe na porta **4712**) ou use as guias da mesma página.
 
 **Formas de apontar o caminho** (campo da tela inicial no navegador, parâmetro do `.exe` ou `hydra`):
 
