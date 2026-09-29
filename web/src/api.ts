@@ -87,7 +87,8 @@ export const api = {
   workspace: async (): Promise<WorkspaceSummary> => (IS_STATIC ? BOOT.data!.summary : call('/workspace')),
 
   // leitura
-  graph: async (id: string): Promise<RepoGraph> => (IS_STATIC ? BOOT.data!.graphs[id] : call(`${repo(id)}/graph`)),
+  graph: async (id: string, limit?: number): Promise<RepoGraph> =>
+    IS_STATIC ? BOOT.data!.graphs[id] : call(`${repo(id)}/graph${limit ? `?limit=${limit}` : ''}`),
   status: (id: string) => call<RepoStatus>(`${repo(id)}/status`),
   commit: (id: string, hash: string) => call<CommitDetail>(`${repo(id)}/commit/${hash}`),
   commitDiff: (id: string, hash: string, file: string) => call<{ diff: string }>(`${repo(id)}/commit/${hash}/diff?file=${enc(file)}`),

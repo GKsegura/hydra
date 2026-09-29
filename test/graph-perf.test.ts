@@ -35,6 +35,12 @@ describe.each<FixtureProfile>(['linear', 'merges'])('grafo em repositório grand
     expect(g.layout.nodes).toHaveLength(250);
   });
 
+  it('com exatamente `max` commits no repo, não marca como truncado', async () => {
+    const g = await repoGraph(repo, COMMITS);
+    expect(g.commits).toHaveLength(COMMITS);
+    expect(g.truncated).toBe(false);
+  });
+
   it('carregando tudo, não trunca e cada node aponta para uma linha válida', async () => {
     const t0 = performance.now();
     const g = await repoGraph(repo, COMMITS + 10);

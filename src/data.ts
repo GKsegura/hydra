@@ -34,6 +34,9 @@ export async function workspaceSummary(ws: Workspace): Promise<WorkspaceSummary>
 }
 
 export async function repoGraph(repo: Repo, max: number): Promise<RepoGraph> {
-  const [commits, refs] = await Promise.all([getCommits(repo.path, max), listRefs(repo.path)]);
-  return { commits, layout: layout(commits), refs, truncated: commits.length >= max };
+  // Pede um commit a mais só para saber se existem outros além do limite (evita marcar como truncado quando são exatamente `max`).
+  const [fetched, refs] = await Promise.all([getCommits(repo.path, max + 1), listRefs(repo.path)]);
+  const truncated = fetched.length > max;
+  const commits = truncated ? fetched.slice(0, max) : fetched;
+  return { commits, layout: layout(commits), refs, truncated };
 }

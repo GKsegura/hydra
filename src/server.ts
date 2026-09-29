@@ -179,7 +179,14 @@ export function createApp(
     res.json(await getStatus(repoOf(req).path));
   });
   api.get('/repos/:id/graph', async (req, res) => {
-    res.json(await repoGraph(repoOf(req), opts.max));
+    // ?limit=N: só os N commits mais recentes (o teto é opts.max). Sem o parâmetro, vale o teto (CLI/estático).
+    let limit = opts.max;
+    if (req.query.limit !== undefined) {
+      const n = Number(req.query.limit);
+      if (typeof req.query.limit !== 'string' || !Number.isInteger(n) || n < 1) throw new HttpError(400, 'limit deve ser um inteiro positivo');
+      limit = Math.min(n, opts.max);
+    }
+    res.json(await repoGraph(repoOf(req), limit));
   });
   api.get('/repos/:id/commit/:hash', async (req, res) => {
     res.json(await getCommitDetail(repoOf(req).path, String(req.params.hash)));
