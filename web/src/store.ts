@@ -6,6 +6,7 @@ import type {
   WorkspaceSummary,
 } from './types.ts';
 import { layoutKeyFor, legacyLayoutKey } from './layout-key.ts';
+import { INACTIVE_MS, unloadIdleTabs, type ParkedTab } from './tabs.ts';
 import { COLORS } from './utils.ts';
 
 interface DiffView {
@@ -389,7 +390,22 @@ function emptyTab(): TabValues {
   };
 }
 
-const tabData = new Map<string, { values: TabValues; stale: boolean }>();
+const tabData = new Map<string, ParkedTab & { values: TabValues }>();
+
+// Guia parada há um tempo solta os grafos (voltam a carregar ao abrir). `hydra:inactive-ms` no localStorage muda o prazo (testes).
+function inactiveMs(): number {
+  try {
+    return Number(localStorage.getItem('hydra:inactive-ms')) || INACTIVE_MS;
+  } catch {
+    return INACTIVE_MS;
+  }
+}
+let sweeper: ReturnType<typeof setInterval> | undefined;
+function startSweeper() {
+  if (sweeper) return;
+  const ms = inactiveMs();
+  sweeper = setInterval(() => unloadIdleTabs(tabData, Date.now(), ms), Math.min(60_000, Math.max(1000, ms / 2)));
+}
 
 function readTab(): TabValues {
   const fields = {} as Record<string, unknown>;
@@ -416,7 +432,7 @@ let previousWid: string | null = null;
  */
 function switchTo(id: string | null, save = true): boolean {
   if (id === currentWid) return false;
-  if (currentWid && save) tabData.set(currentWid, { values: readTab(), stale: false });
+  if (currentWid && save) tabData.set(currentWid, { values: readTab(), stale: false, parkedAt: Date.now(), unloaded: false });
   if (currentWid) previousWid = currentWid;
   const data = id ? tabData.get(id) : undefined;
   const load = !!id && (!data || data.stale || !data.values.fields.summary);
@@ -722,6 +738,7 @@ let events: EventSource | null = null;
  * e a janela volta a se atualizar ao receber o foco.
  */
 export function connectEvents() {
+  startSweeper();
   if (IS_STATIC || events) return;
   events = new EventSource(eventsUrl());
   events.onopen = () => (state.live = true);
