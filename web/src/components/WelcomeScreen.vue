@@ -52,16 +52,18 @@ async function submit() {
         </button>
       </section>
 
-      <section class="welcome-open">
-        <h2>Ou cole um caminho</h2>
+      <p v-if="desktop" class="faint hint">
+        Você também pode <b>arrastar</b> um arquivo <code>.code-workspace</code> ou uma pasta para esta janela.
+      </p>
+
+      <!-- No navegador (sem o seletor de pastas do desktop) o caminho digitado é a única forma de abrir. -->
+      <section v-else class="welcome-open">
+        <h2>Cole um caminho</h2>
         <form class="welcome-path" @submit.prevent="submit">
           <input v-model="typed" placeholder="C:\...\projeto  ·  C:\...\projeto.code-workspace  ·  uma pasta com vários repos" spellcheck="false">
-          <button class="btn" :class="{ primary: !desktop }" :disabled="!typed.trim() || state.opening">Abrir</button>
+          <button class="btn primary" :disabled="!typed.trim() || state.opening">Abrir</button>
         </form>
-        <p class="faint hint">
-          Aceita um repositório sozinho, uma pasta com repositórios ou um arquivo <code>.code-workspace</code>.
-          <template v-if="desktop"> Você também pode <b>arrastar</b> o arquivo ou a pasta para esta janela.</template>
-        </p>
+        <p class="faint hint">Aceita um repositório sozinho, uma pasta com repositórios ou um arquivo <code>.code-workspace</code>.</p>
       </section>
 
       <section v-if="state.app?.recents.length" class="welcome-recents">

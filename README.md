@@ -269,7 +269,7 @@ O Client ID é público (vai no app), mas ele sozinho não dá acesso a nada: ca
 
 ### App desktop
 
-Abra o Hydra pelo Menu Iniciar (instalador) ou pelo `Hydra-<versão>-portable.exe`. Na primeira vez aparece a **tela inicial**, com os cartões **Clonar repositório**, **Novo repositório**, **Abrir repositório** e **Abrir workspace**. Também dá pra **colar um caminho** ou **arrastar** a pasta/arquivo para a janela, e da próxima vez o projeto aparece em **Recentes**.
+Abra o Hydra pelo Menu Iniciar (instalador) ou pelo `Hydra-<versão>-portable.exe`. Na primeira vez aparece a **tela inicial**, com os cartões **Clonar repositório**, **Novo repositório**, **Abrir repositório** e **Abrir workspace**. Também dá pra **arrastar** a pasta/arquivo para a janela (no navegador, a tela inicial tem um campo para colar o caminho), e da próxima vez o projeto aparece em **Recentes**.
 
 O `.exe` também aceita o caminho como parâmetro, útil pra criar atalhos que já abrem um projeto:
 
@@ -590,14 +590,14 @@ Para sair: clique no avatar → **Sair**. O token é apagado deste computador.
 A troca é feita **dentro do Hydra**:
 
 - **Menu do topo** (`workspace cronos ▾`): **Recentes**, *Clonar…*, *Novo repositório…*, *Abrir workspace…* (`Ctrl+O`), *Abrir repositório ou pasta…* (app), *Tela inicial* e *Fechar workspace*.
-- **Tela inicial**: recentes (o **✕** tira da lista, sem apagar nada), cartões ou colar o caminho.
+- **Tela inicial**: recentes (o **✕** tira da lista, sem apagar nada), cartões (no navegador, também um campo para colar o caminho).
 - **Menu do app** (a barra no topo da janela): **Arquivo**, **Repositório**, **Exibir** e **Ajuda** (conta do GitHub, procurar atualizações, notas da versão, sobre).
 
 Cada workspace guarda **o seu próprio layout**.
 
 **Dois workspaces ao mesmo tempo?** O app tem **uma janela só**: abrir o `.exe` de novo com um caminho **troca** o workspace da janela aberta. No navegador, rode um segundo `hydra` em outro terminal (ele sobe na porta **4712**).
 
-**Formas de apontar o caminho** (tela inicial, parâmetro do `.exe` ou `hydra`):
+**Formas de apontar o caminho** (campo da tela inicial no navegador, parâmetro do `.exe` ou `hydra`):
 
 ```bash
 C:\Users\José\Documents\GitHub\CRONOS\cronos.code-workspace   # workspace
