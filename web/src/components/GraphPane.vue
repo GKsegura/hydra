@@ -1,13 +1,13 @@
 <!-- Hydra — © 2026 José Segura (GKsegura) · MIT -->
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { IS_STATIC } from '../api.ts';
 import { commitMenu, discard, openDialog, openIn, openMenu, openOnGitHub } from '../actions.ts';
 import { openTerminal, terminalAvailable } from '../terminal.ts';
 import { edgePath, laneX, rowY } from '../graph.ts';
 import { headRow, hideRepo, loadMore, matches, repoById, repoColor, selectCommit, selectDefault, selectWip, state, statusOf } from '../store.ts';
 import { ago, COL, COLORS, fullDate, PAD, ROW } from '../utils.ts';
-import { visibleRange } from '../window.ts';
+import { HEAD_H, useWindow } from '../useWindow.ts';
 import AppIcon from './AppIcon.vue';
 import BranchMenu from './BranchMenu.vue';
 import OperationBanner from './OperationBanner.vue';
@@ -31,39 +31,7 @@ const height = computed(() => Math.max((commits.value.length + off.value) * ROW,
 // Virtualização: só as linhas (e os nós/arestas do SVG) perto da janela visível vão para o DOM.
 // A altura total vem dos espaçadores e do SVG, então a barra de rolagem continua a da lista inteira.
 const scroller = ref<HTMLElement>();
-const HEAD_H = 26;
-const BUFFER = 30;
-const scrollTop = ref(0);
-const viewport = ref(800);
-const range = computed(() =>
-  visibleRange({
-    scrollTop: scrollTop.value,
-    viewport: viewport.value,
-    rowHeight: ROW,
-    total: commits.value.length,
-    top: HEAD_H + off.value * ROW,
-    buffer: BUFFER,
-  }),
-);
-// start/end separados: quem depende só deles não recalcula a cada pixel de rolagem.
-const start = computed(() => range.value.start);
-const end = computed(() => range.value.end);
-
-// O navegador já entrega no máximo um evento de scroll por frame; atualizar direto evita um frame com linhas em branco.
-function syncScroll() {
-  const box = scroller.value;
-  if (!box) return;
-  scrollTop.value = box.scrollTop;
-  viewport.value = box.clientHeight;
-}
-let observer: ResizeObserver | undefined;
-onMounted(() => {
-  if (!scroller.value) return;
-  viewport.value = scroller.value.clientHeight;
-  observer = new ResizeObserver(syncScroll);
-  observer.observe(scroller.value);
-});
-onBeforeUnmount(() => observer?.disconnect());
+const { start, end, syncScroll } = useWindow(scroller, () => commits.value.length, () => HEAD_H + off.value * ROW);
 
 const visibleRows = computed(() => commits.value.slice(start.value, end.value).map((c, k) => ({ c, i: start.value + k })));
 const edges = computed(() =>
@@ -235,7 +203,7 @@ function rowMenu(ev: MouseEvent, i: number) {
             <div class="c-date">agora</div>
           </div>
 
-          <div v-if="start" class="spacer" :style="{ height: `${start * ROW}px` }" />
+          <div v-if="start" class="vspace" :style="{ height: `${start * ROW}px` }" />
           <div
             v-for="{ c, i } in visibleRows"
             :key="c.hash"
@@ -252,7 +220,7 @@ function rowMenu(ev: MouseEvent, i: number) {
             <div class="c-date">{{ ago(c.time) }}</div>
           </div>
 
-          <div v-if="end < commits.length" class="spacer" :style="{ height: `${(commits.length - end) * ROW}px` }" />
+          <div v-if="end < commits.length" class="vspace" :style="{ height: `${(commits.length - end) * ROW}px` }" />
 
           <div v-if="!graph" class="empty">Carregando…</div>
           <div v-else-if="!commits.length && !wip" class="empty">Este repositório ainda não tem commits.</div>
