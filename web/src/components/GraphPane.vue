@@ -1,12 +1,13 @@
 <!-- Hydra — © 2026 José Segura (GKsegura) · MIT -->
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { IS_STATIC } from '../api.ts';
 import { commitMenu, discard, openDialog, openIn, openMenu, openOnGitHub } from '../actions.ts';
 import { openTerminal, terminalAvailable } from '../terminal.ts';
 import { edgePath, laneX, rowY } from '../graph.ts';
 import { headRow, hideRepo, loadMore, matches, repoById, repoColor, selectCommit, selectDefault, selectWip, state, statusOf } from '../store.ts';
 import { ago, COL, COLORS, fullDate, PAD, ROW } from '../utils.ts';
+import { visibleRange } from '../window.ts';
 import AppIcon from './AppIcon.vue';
 import BranchMenu from './BranchMenu.vue';
 import OperationBanner from './OperationBanner.vue';
@@ -27,19 +28,66 @@ const head = computed(() => headRow(props.repoId));
 const graphWidth = computed(() => Math.min(Math.max((graph.value?.layout.width ?? 1) * COL + PAD, 48), 320));
 const height = computed(() => Math.max((commits.value.length + off.value) * ROW, ROW));
 
+// Virtualização: só as linhas (e os nós/arestas do SVG) perto da janela visível vão para o DOM.
+// A altura total vem dos espaçadores e do SVG, então a barra de rolagem continua a da lista inteira.
+const scroller = ref<HTMLElement>();
+const HEAD_H = 26;
+const BUFFER = 30;
+const scrollTop = ref(0);
+const viewport = ref(800);
+const range = computed(() =>
+  visibleRange({
+    scrollTop: scrollTop.value,
+    viewport: viewport.value,
+    rowHeight: ROW,
+    total: commits.value.length,
+    top: HEAD_H + off.value * ROW,
+    buffer: BUFFER,
+  }),
+);
+// start/end separados: quem depende só deles não recalcula a cada pixel de rolagem.
+const start = computed(() => range.value.start);
+const end = computed(() => range.value.end);
+
+// O navegador já entrega no máximo um evento de scroll por frame; atualizar direto evita um frame com linhas em branco.
+function syncScroll() {
+  const box = scroller.value;
+  if (!box) return;
+  scrollTop.value = box.scrollTop;
+  viewport.value = box.clientHeight;
+}
+let observer: ResizeObserver | undefined;
+onMounted(() => {
+  if (!scroller.value) return;
+  viewport.value = scroller.value.clientHeight;
+  observer = new ResizeObserver(syncScroll);
+  observer.observe(scroller.value);
+});
+onBeforeUnmount(() => observer?.disconnect());
+
+const visibleRows = computed(() => commits.value.slice(start.value, end.value).map((c, k) => ({ c, i: start.value + k })));
 const edges = computed(() =>
-  (graph.value?.layout.edges ?? []).map((e) => ({ d: edgePath(e, off.value), color: COLORS[e.color] })),
+  (graph.value?.layout.edges ?? []).flatMap((e, i) =>
+    e.fromRow < end.value && e.toRow >= start.value ? [{ key: i, d: edgePath(e, off.value), color: COLORS[e.color] }] : [],
+  ),
 );
 const nodes = computed(() =>
-  (graph.value?.layout.nodes ?? []).map((n, i) => ({
-    x: laneX(n.col),
-    y: rowY(i, off.value),
-    color: COLORS[n.color],
-    merge: commits.value[i].parents.length > 1,
-    head: i === head.value,
-  })),
+  (graph.value?.layout.nodes ?? []).slice(start.value, end.value).map((n, k) => {
+    const i = start.value + k;
+    return {
+      i,
+      x: laneX(n.col),
+      y: rowY(i, off.value),
+      color: COLORS[n.color],
+      merge: commits.value[i].parents.length > 1,
+      head: i === head.value,
+    };
+  }),
 );
-const wipX = computed(() => (head.value >= 0 ? nodes.value[head.value]?.x ?? PAD : PAD));
+const wipX = computed(() => {
+  const n = head.value >= 0 ? graph.value?.layout.nodes[head.value] : undefined;
+  return n ? laneX(n.col) : PAD;
+});
 
 const ahead = computed(() => {
   const s = status.value;
@@ -58,8 +106,6 @@ const wipSelected = computed(() => state.selected?.repoId === props.repoId && st
 const draft = computed(() => state.drafts[props.repoId]?.summary.trim());
 
 // Rolagem pedida pela store (teclado, sidebar, pais do commit…).
-const scroller = ref<HTMLElement>();
-const HEAD_H = 26;
 watch(
   () => state.scroll,
   (req) => {
@@ -81,6 +127,10 @@ function maybeLoadMore() {
   if (box.scrollHeight - box.scrollTop - box.clientHeight < LOAD_AHEAD) void loadMore(props.repoId);
 }
 watch(() => graph.value?.commits.length, () => nextTick(maybeLoadMore));
+function onScroll() {
+  syncScroll();
+  maybeLoadMore();
+}
 
 /** Menu "⋯" do painel: ações do repositório. */
 function repoMenu(ev: MouseEvent) {
@@ -148,7 +198,7 @@ function rowMenu(ev: MouseEvent, i: number) {
     </div>
     <OperationBanner v-if="!IS_STATIC" :repo-id="repoId" />
 
-    <div ref="scroller" class="graph-scroll" @scroll.passive="maybeLoadMore">
+    <div ref="scroller" class="graph-scroll" @scroll.passive="onScroll">
       <div class="graph-head">
         <div class="h-refs">BRANCH / TAG</div>
         <div class="h-graph">GRAPH</div>
@@ -158,9 +208,9 @@ function rowMenu(ev: MouseEvent, i: number) {
       </div>
       <div class="graph-inner">
         <svg class="graph-svg" :height="height" :viewBox="`0 0 ${graphWidth} ${height}`" :style="{ height: `${height}px` }" aria-hidden="true">
-          <path v-for="(e, i) in edges" :key="i" :d="e.d" :stroke="e.color" />
+          <path v-for="e in edges" :key="e.key" :d="e.d" :stroke="e.color" />
           <path v-if="wip && head >= 0" class="wip-line" :d="`M${wipX} ${ROW / 2} L${wipX} ${(head + 1) * ROW + ROW / 2}`" />
-          <template v-for="(n, i) in nodes" :key="i">
+          <template v-for="n in nodes" :key="n.i">
             <circle v-if="n.head" class="head-ring" :cx="n.x" :cy="n.y" r="9" :stroke="n.color" />
             <circle class="node" :class="{ merge: n.merge }" :cx="n.x" :cy="n.y" :r="n.merge ? 4.5 : 6" :fill="n.color" />
           </template>
@@ -185,8 +235,9 @@ function rowMenu(ev: MouseEvent, i: number) {
             <div class="c-date">agora</div>
           </div>
 
+          <div v-if="start" class="spacer" :style="{ height: `${start * ROW}px` }" />
           <div
-            v-for="(c, i) in commits"
+            v-for="{ c, i } in visibleRows"
             :key="c.hash"
             class="row"
             :class="{ sel: c.hash === selHash, dim: hits && !hits.has(i), hit: hits?.has(i) }"
@@ -200,6 +251,8 @@ function rowMenu(ev: MouseEvent, i: number) {
             <div class="c-author"><UserAvatar :name="c.author" :email="c.email" /><span>{{ c.author }}</span></div>
             <div class="c-date">{{ ago(c.time) }}</div>
           </div>
+
+          <div v-if="end < commits.length" class="spacer" :style="{ height: `${(commits.length - end) * ROW}px` }" />
 
           <div v-if="!graph" class="empty">Carregando…</div>
           <div v-else-if="!commits.length && !wip" class="empty">Este repositório ainda não tem commits.</div>
