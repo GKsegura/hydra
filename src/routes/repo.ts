@@ -12,11 +12,11 @@ import { compareUrl, createRepo, listPulls } from '../github.ts';
 import type { GitHubSession } from '../github-session.ts';
 import { bool, HttpError, int, optStr, str } from '../http.ts';
 import type { Jobs } from '../jobs.ts';
-import type { Session } from '../server.ts';
 import type { Repo } from '../workspace.ts';
+import type { WorkspaceScope } from '../workspace-session.ts';
 
 export interface RepoContext {
-  session: Session;
+  session: WorkspaceScope;
   jobs: Jobs;
   github: GitHubSession;
   /** App desktop: manda arquivos para a Lixeira ao descartar. */

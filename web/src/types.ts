@@ -55,7 +55,11 @@ export interface AppInfo {
   desktop: boolean;
   version: string;
   defaultDir: string;
-  workspace: { name: string; file: string | null; source: string | null } | null;
+  /** O workspace ativo (o front atual só mostra este). */
+  workspace: { id: string; name: string; file: string | null; source: string | null } | null;
+  /** As guias abertas, na ordem, e a ativa (null = tela inicial). */
+  tabs: { id: string; name: string; file: string | null; source: string | null }[];
+  active: string | null;
   recents: Recent[];
   /** Aviso a mostrar uma vez (ex.: não foi possível reabrir o último workspace). */
   notice?: string | null;

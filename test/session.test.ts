@@ -43,11 +43,11 @@ describe('Session: restaurar o último workspace', () => {
     first.open(dir);
 
     const second = new Session(f.recents, f.session);
-    expect(second.restore()).toBe(true);
+    expect(second.restore()).toBe(1);
     expect(second.ws?.repos).toHaveLength(1);
 
     second.close();
-    expect(new Session(f.recents, f.session).restore()).toBe(false);
+    expect(new Session(f.recents, f.session).restore()).toBe(0);
     expect(second.recents.list().map((r) => r.path.toLowerCase())).toContain(path.resolve(dir).toLowerCase());
   });
 
@@ -55,7 +55,7 @@ describe('Session: restaurar o último workspace', () => {
     const f = files();
     new SessionStore(f.session).setSingle(path.join(tmpDir(), 'nao-existe'));
     const s = new Session(f.recents, f.session);
-    expect(s.restore()).toBe(false);
+    expect(s.restore()).toBe(0);
     expect(s.ws).toBeNull();
     expect(s.takeNotice()).toContain('Não foi possível reabrir');
     expect(s.takeNotice()).toBeNull();

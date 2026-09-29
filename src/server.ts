@@ -6,7 +6,7 @@ import os from 'node:os';
 import type { Server } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import express, { type NextFunction, type Request, type Response } from 'express';
+import express, { type NextFunction, type Request, type Response, type Router } from 'express';
 import { WebSocketServer } from 'ws';
 import { repoGraph, workspaceSummary } from './data.ts';
 import {
@@ -26,7 +26,7 @@ import { Terminals } from './terminal.ts';
 import { VERSION } from './version.ts';
 import { RepoWatchers } from './watch.ts';
 import { loadWorkspace, type Repo, type Workspace } from './workspace.ts';
-import { WorkspaceSession } from './workspace-session.ts';
+import { WorkspaceSession, type WorkspaceScope } from './workspace-session.ts';
 
 /** Pasta sugerida para clonar/criar repositórios: Documentos\GitHub se existir (padrão do GitHub Desktop). */
 function defaultProjectsDir(): string {
@@ -83,6 +83,9 @@ export class Session {
   private workspaces = new Map<string, WorkspaceSession>();
   private order: string[] = [];
   private activeId: string | null = null;
+  /** Última guia que esteve ativa (a sessão salva reabre nela, mesmo se o app fechou no Início). */
+  private lastId: string | null = null;
+  private restoring = false;
   recents: Recents;
   store: SessionStore;
   /** Aviso pendente (ex.: não deu para reabrir o último workspace); entregue uma vez ao front. */
@@ -97,18 +100,31 @@ export class Session {
     this.store = new SessionStore(sessionFile);
   }
 
-  /** Reabre o workspace da sessão salva. Se não der (pasta sumiu, sem repos), fica na tela inicial e guarda um aviso. */
-  restore(): boolean {
+  /**
+   * Reabre todas as guias da sessão salva, na mesma ordem, e ativa a que estava ativa (ou, se ela falhou, a primeira que abriu).
+   * As que não abrirem (pasta sumiu, sem repos) são puladas e viram um único aviso. Devolve quantas abriram.
+   */
+  restore(): number {
     const { tabs, activeTab } = this.store.read();
-    const source = tabs[activeTab]?.source;
-    if (!source) return false;
+    const failed: string[] = [];
+    let wanted: string | null = null;
+    this.restoring = true;
     try {
-      this.open(source);
-      return true;
-    } catch (err) {
-      this.notice = `Não foi possível reabrir "${source}": ${(err as Error).message}`;
-      return false;
+      tabs.forEach((tab, i) => {
+        try {
+          this.open(tab.source, 'add');
+          if (i === activeTab) wanted = this.activeId;
+        } catch (err) {
+          failed.push(`"${tab.source}" (${(err as Error).message})`);
+        }
+      });
+    } finally {
+      this.restoring = false;
     }
+    if (this.order.length) this.activeId = wanted ?? this.order[0];
+    if (failed.length) this.notice = `Não foi possível reabrir ${failed.join('; ')}`;
+    this.persist();
+    return this.order.length;
   }
 
   /** Entrega (uma vez) o aviso pendente. */
@@ -133,8 +149,8 @@ export class Session {
     for (const id of mode === 'replace' ? [...this.order] : [opened.id]) this.closeWorkspace(id, false);
     this.workspaces.set(opened.id, opened);
     this.order.push(opened.id);
-    this.activeId = opened.id;
-    this.recents.add({ path: ws.source ?? target, name: ws.name });
+    this.activeId = this.lastId = opened.id;
+    if (!this.restoring) this.recents.add({ path: ws.source ?? target, name: ws.name }); // reabrir a sessão não conta como "aberto agora"
     this.persist();
     this.onOpen?.(opened);
     return ws;
@@ -148,6 +164,7 @@ export class Session {
     const i = this.order.indexOf(id);
     this.order.splice(i, 1);
     if (this.activeId === id) this.activeId = this.order[Math.min(i, this.order.length - 1)] ?? null;
+    if (this.lastId === id) this.lastId = this.activeId ?? this.order[this.order.length - 1] ?? null;
     if (save) this.persist();
   }
 
@@ -156,9 +173,24 @@ export class Session {
     if (this.activeId) this.closeWorkspace(this.activeId);
   }
 
-  activate(id: string) {
-    if (!this.workspaces.has(id)) throw new HttpError(404, 'Workspace não encontrado');
+  /** Passa a guia ativa para `id`; `null` = a tela inicial (nenhum workspace ativo). */
+  activate(id: string | null) {
+    if (id !== null && !this.workspaces.has(id)) throw new HttpError(404, 'Workspace não encontrado');
     this.activeId = id;
+    if (id) this.lastId = id;
+    this.persist();
+  }
+
+  get(id: string): WorkspaceSession | undefined {
+    return this.workspaces.get(id);
+  }
+
+  /** Reordena as guias. `ids` precisa ser exatamente os workspaces abertos, em qualquer ordem. */
+  reorder(ids: string[]) {
+    if (ids.length !== this.order.length || new Set(ids).size !== ids.length || !ids.every((id) => this.workspaces.has(id))) {
+      throw new HttpError(400, 'A lista de guias precisa ter exatamente os workspaces abertos');
+    }
+    this.order = [...ids];
     this.persist();
   }
 
@@ -192,16 +224,15 @@ export class Session {
 
   /** Grava as guias abertas (ordem e ativa) para reabrir na próxima execução. */
   private persist() {
+    if (this.restoring) return; // durante a restauração a lista salva ainda está sendo lida: grava só no fim
     const tabs = this.all().map((w) => ({ source: w.ws.source ?? w.ws.file ?? w.ws.name }));
-    this.store.write({ tabs, activeTab: Math.max(0, this.order.indexOf(this.activeId ?? '')) });
+    this.store.write({ tabs, activeTab: Math.max(0, this.order.indexOf(this.activeId ?? this.lastId ?? '')) });
   }
 }
 
 export function createApp(
   session: Session, opts: ServerOptions, token: string, jobs: Jobs, github: GitHubSession, terminals: Terminals, watchers: RepoWatchers,
 ) {
-  const repoOf = (req: Request): Repo => session.repo(String(req.params.id));
-
   const app = express();
   app.disable('x-powered-by');
 
@@ -228,7 +259,12 @@ export function createApp(
     desktop: !!opts.desktop,
     version: VERSION,
     defaultDir: defaultProjectsDir(),
-    workspace: session.ws ? { name: session.ws.name, file: session.ws.file, source: session.ws.source ?? null } : null,
+    workspace: session.active
+      ? { id: session.active.id, name: session.ws!.name, file: session.ws!.file, source: session.ws!.source ?? null }
+      : null,
+    // As guias abertas, na ordem, e a ativa (null = tela inicial).
+    tabs: session.all().map((w) => ({ id: w.id, name: w.ws.name, file: w.ws.file, source: w.ws.source ?? null })),
+    active: session.active?.id ?? null,
     recents: session.recents.list(),
   });
 
@@ -238,8 +274,11 @@ export function createApp(
   api.post('/workspace/open', (req, res) => {
     const target = req.body?.path;
     if (typeof target !== 'string' || !target.trim()) throw new HttpError(400, 'Informe o caminho do workspace');
+    // 'replace' (padrão, o front atual) fecha os outros; 'add' abre em uma nova guia (ou ativa a que já existe).
+    const mode = req.body?.mode ?? 'replace';
+    if (mode !== 'replace' && mode !== 'add') throw new HttpError(400, 'mode deve ser "replace" ou "add"');
     try {
-      session.open(target.trim().replace(/^"(.*)"$/, '$1'));
+      session.open(target.trim().replace(/^"(.*)"$/, '$1'), mode);
     } catch (err) {
       throw err instanceof HttpError ? err : new HttpError(400, (err as Error).message);
     }
@@ -249,63 +288,104 @@ export function createApp(
     session.close();
     res.json(appInfo());
   });
+  // Guias: fechar uma pelo id, escolher a ativa (null = tela inicial) e reordenar.
+  api.post('/w/:wid/close', (req, res) => {
+    const id = String(req.params.wid);
+    if (!session.get(id)) throw new HttpError(404, 'Workspace não encontrado');
+    session.closeWorkspace(id);
+    res.json(appInfo());
+  });
+  api.post('/session/active', (req, res) => {
+    const id = req.body?.id;
+    if (id !== null && typeof id !== 'string') throw new HttpError(400, 'Informe o id da guia (ou null para a tela inicial)');
+    session.activate(id);
+    res.json(appInfo());
+  });
+  api.post('/session/order', (req, res) => {
+    const ids = req.body?.ids;
+    if (!Array.isArray(ids) || !ids.every((x) => typeof x === 'string')) throw new HttpError(400, 'Informe a lista de ids das guias');
+    session.reorder(ids);
+    res.json(appInfo());
+  });
   api.post('/recents/remove', (req, res) => {
     if (typeof req.body?.path !== 'string') throw new HttpError(400, 'Informe o caminho');
     session.recents.remove(req.body.path);
     res.json(appInfo());
   });
 
-  api.get('/workspace', async (_req, res) => {
-    res.json(await workspaceSummary(session.current()));
-  });
-  api.get('/repos/:id/status', async (req, res) => {
-    res.json(await getStatus(repoOf(req).path));
-  });
-  api.get('/repos/:id/graph', async (req, res) => {
-    // ?limit=N: só os N commits mais recentes (o teto é opts.max). Sem o parâmetro, vale o teto (CLI/estático).
-    let limit = opts.max;
-    if (req.query.limit !== undefined) {
-      const n = Number(req.query.limit);
-      if (typeof req.query.limit !== 'string' || !Number.isInteger(n) || n < 1) throw new HttpError(400, 'limit deve ser um inteiro positivo');
-      limit = Math.min(n, opts.max);
-    }
-    res.json(await repoGraph(repoOf(req), limit));
-  });
-  api.get('/repos/:id/commit/:hash', async (req, res) => {
-    res.json(await getCommitDetail(repoOf(req).path, String(req.params.hash)));
-  });
-  api.get('/repos/:id/commit/:hash/diff', async (req, res) => {
-    const file = req.query.file;
-    if (typeof file !== 'string' || !file) throw new HttpError(400, 'Informe ?file=');
-    res.json({ diff: await getCommitFileDiff(repoOf(req).path, String(req.params.hash), file) });
-  });
-  api.get('/repos/:id/diff', async (req, res) => {
-    const repo = repoOf(req);
-    const change = (await getStatus(repo.path)).files.find((f) => f.path === req.query.file);
-    if (!change) throw new HttpError(404, 'Arquivo não está no status');
-    res.json({ diff: await getWorkingDiff(repo.path, change, req.query.staged === '1') });
-  });
+  /**
+   * As rotas que trabalham dentro de um workspace. Montadas duas vezes: em `/w/:wid/...` (um workspace qualquer, pelo id)
+   * e sem prefixo (o workspace ativo — o front atual ainda usa estas).
+   */
+  const scopedRoutes = (scope: WorkspaceScope): Router => {
+    const r = express.Router();
+    const repoOf = (req: Request): Repo => scope.repo(String(req.params.id));
 
-  api.post('/repos/:id/stage', async (req, res) => {
-    const repo = repoOf(req);
-    await stage(repo.path, await validFiles(repo, req.body?.files));
-    res.json(await getStatus(repo.path));
-  });
-  api.post('/repos/:id/unstage', async (req, res) => {
-    const repo = repoOf(req);
-    const files = await validFiles(repo, req.body?.files);
-    await unstage(repo.path, files, (await getStatus(repo.path)).initial);
-    res.json(await getStatus(repo.path));
-  });
-  api.post('/repos/:id/commit', async (req, res) => {
-    const repo = repoOf(req);
-    const summary = typeof req.body?.summary === 'string' ? req.body.summary.trim() : '';
-    const body = typeof req.body?.body === 'string' ? req.body.body : '';
-    if (!summary) throw new HttpError(400, 'O resumo do commit é obrigatório');
-    if ((await getStatus(repo.path)).staged === 0) throw new HttpError(400, 'Nada em stage para commitar');
-    const hash = await commit(repo.path, summary, body);
-    res.json({ hash, status: await getStatus(repo.path) });
-  });
+    r.get('/workspace', async (_req, res) => {
+      res.json(await workspaceSummary(scope.current()));
+    });
+    r.get('/repos/:id/status', async (req, res) => {
+      res.json(await getStatus(repoOf(req).path));
+    });
+    r.get('/repos/:id/graph', async (req, res) => {
+      // ?limit=N: só os N commits mais recentes (o teto é opts.max). Sem o parâmetro, vale o teto (CLI/estático).
+      let limit = opts.max;
+      if (req.query.limit !== undefined) {
+        const n = Number(req.query.limit);
+        if (typeof req.query.limit !== 'string' || !Number.isInteger(n) || n < 1) throw new HttpError(400, 'limit deve ser um inteiro positivo');
+        limit = Math.min(n, opts.max);
+      }
+      res.json(await repoGraph(repoOf(req), limit));
+    });
+    r.get('/repos/:id/commit/:hash', async (req, res) => {
+      res.json(await getCommitDetail(repoOf(req).path, String(req.params.hash)));
+    });
+    r.get('/repos/:id/commit/:hash/diff', async (req, res) => {
+      const file = req.query.file;
+      if (typeof file !== 'string' || !file) throw new HttpError(400, 'Informe ?file=');
+      res.json({ diff: await getCommitFileDiff(repoOf(req).path, String(req.params.hash), file) });
+    });
+    r.get('/repos/:id/diff', async (req, res) => {
+      const repo = repoOf(req);
+      const change = (await getStatus(repo.path)).files.find((f) => f.path === req.query.file);
+      if (!change) throw new HttpError(404, 'Arquivo não está no status');
+      res.json({ diff: await getWorkingDiff(repo.path, change, req.query.staged === '1') });
+    });
+
+    r.post('/repos/:id/stage', async (req, res) => {
+      const repo = repoOf(req);
+      await stage(repo.path, await validFiles(repo, req.body?.files));
+      res.json(await getStatus(repo.path));
+    });
+    r.post('/repos/:id/unstage', async (req, res) => {
+      const repo = repoOf(req);
+      const files = await validFiles(repo, req.body?.files);
+      await unstage(repo.path, files, (await getStatus(repo.path)).initial);
+      res.json(await getStatus(repo.path));
+    });
+    r.post('/repos/:id/commit', async (req, res) => {
+      const repo = repoOf(req);
+      const summary = typeof req.body?.summary === 'string' ? req.body.summary.trim() : '';
+      const body = typeof req.body?.body === 'string' ? req.body.body : '';
+      if (!summary) throw new HttpError(400, 'O resumo do commit é obrigatório');
+      if ((await getStatus(repo.path)).staged === 0) throw new HttpError(400, 'Nada em stage para commitar');
+      const hash = await commit(repo.path, summary, body);
+      res.json({ hash, status: await getStatus(repo.path) });
+    });
+
+    r.use(terminalRoutes({ session: scope, terminals }));
+    r.use(workspaceRoutes({ session: scope }));
+    r.use('/repos/:id', repoRoutes({ session: scope, jobs, github, trash: opts.trash }));
+    return r;
+  };
+
+  // Um roteador por workspace aberto (criado na primeira chamada; o WeakMap o solta junto com o workspace).
+  const scopedRouters = new WeakMap<WorkspaceSession, Router>();
+  const routerOf = (w: WorkspaceSession) => {
+    let router = scopedRouters.get(w);
+    if (!router) scopedRouters.set(w, (router = scopedRoutes(w)));
+    return router;
+  };
 
   // Tempo real: um aviso por repo que mudou (ver src/watch.ts). Um comentário a cada 25 s mantém a conexão viva.
   api.get('/events', (req, res) => {
@@ -332,9 +412,12 @@ export function createApp(
   });
 
   api.use(appRoutes({ jobs, github }));
-  api.use(terminalRoutes({ session, terminals }));
-  api.use(workspaceRoutes({ session }));
-  api.use('/repos/:id', repoRoutes({ session, jobs, github, trash: opts.trash }));
+  api.use('/w/:wid', (req, res, next) => {
+    const workspace = session.get(String(req.params.wid));
+    if (!workspace) return next(new HttpError(404, 'Workspace não encontrado'));
+    routerOf(workspace)(req, res, next);
+  });
+  api.use(scopedRoutes(session)); // sem prefixo: o workspace ativo
 
   api.use((_req, _res, next) => next(new HttpError(404, 'Rota não encontrada')));
   app.use('/api', api);

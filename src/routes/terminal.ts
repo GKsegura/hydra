@@ -1,10 +1,10 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 import express from 'express';
-import type { Session } from '../server.ts';
 import type { Terminals } from '../terminal.ts';
+import type { WorkspaceScope } from '../workspace-session.ts';
 
 /** Terminal integrado: abrir/fechar sessões. A entrada e a saída passam pelo WebSocket (server.ts). */
-export function terminalRoutes(ctx: { session: Session; terminals: Terminals }) {
+export function terminalRoutes(ctx: { session: WorkspaceScope; terminals: Terminals }) {
   const r = express.Router();
 
   r.get('/terminal', (_req, res) => {

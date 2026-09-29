@@ -80,6 +80,36 @@ describe.skipIf(!available)('Terminais por workspace', () => {
   });
 });
 
+describe.skipIf(!available)('Terminal em workspace que não é o ativo', () => {
+  it('abre por /w/:wid e fechar essa guia encerra só o terminal dela', async () => {
+    const dir = tmpDir();
+    const srv = await startServer(null, { port: 0, max: 10, recentsFile: path.join(dir, 'recents.json'), sessionFile: path.join(dir, 'session.json') });
+    try {
+      srv.session.open(makeRepo(), 'add');
+      srv.session.open(makeRepo(), 'add'); // este é o ativo
+      const [wa, wb] = srv.session.all().map((w) => w.id);
+      const spawn = async (wid: string) => {
+        const res = await fetch(`http://127.0.0.1:${srv.port}/api/w/${wid}/repos/${srv.session.get(wid)!.ws.repos[0].id}/terminals`, {
+          method: 'POST',
+          headers: { 'x-hydra-token': srv.token, 'content-type': 'application/json' },
+          body: JSON.stringify({ cols: 80, rows: 24 }),
+        });
+        return ((await res.json()) as { id: string }).id;
+      };
+      const ta = await spawn(wa); // workspace inativo
+      const tb = await spawn(wb);
+      expect(srv.terminals.has(ta)).toBe(true);
+      expect(srv.terminals.has(tb)).toBe(true);
+
+      srv.session.closeWorkspace(wa);
+      expect(srv.terminals.has(ta)).toBe(false);
+      expect(srv.terminals.has(tb)).toBe(true);
+    } finally {
+      srv.server.close();
+    }
+  });
+});
+
 describe.skipIf(!available)('WebSocket do terminal', () => {
   it('exige o token e a origem local', async () => {
     const dir = makeRepo();

@@ -613,7 +613,9 @@ export function connectEvents() {
   events.onopen = () => (state.live = true);
   events.onerror = () => (state.live = false);
   events.onmessage = (ev) => {
-    const change = JSON.parse(ev.data) as { repoId: string; kind: ChangeKind };
+    const change = JSON.parse(ev.data) as { workspaceId?: string; repoId: string; kind: ChangeKind };
+    // O servidor avisa de todos os workspaces abertos; este front só mostra o ativo (ids de repo se repetem entre workspaces).
+    if (change.workspaceId && change.workspaceId !== state.app?.workspace?.id) return;
     onRepoChange(change.repoId, change.kind);
   };
 }

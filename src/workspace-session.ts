@@ -8,8 +8,15 @@ export function workspaceId(source: string): string {
   return createHash('sha1').update(source.toLowerCase()).digest('hex').slice(0, 10);
 }
 
+/** O que as rotas de dentro de um workspace precisam: achar repos, ler o workspace e saber a quem pertencem. */
+export interface WorkspaceScope {
+  repo(id: string): Repo;
+  current(): Workspace;
+  currentSession(): WorkspaceSession;
+}
+
 /** Um workspace aberto (uma guia): o que foi carregado dele e a busca de repositórios por id. */
-export class WorkspaceSession {
+export class WorkspaceSession implements WorkspaceScope {
   readonly id: string;
   readonly ws: Workspace;
   private repos: Map<string, Repo>;
@@ -22,6 +29,10 @@ export class WorkspaceSession {
 
   current(): Workspace {
     return this.ws;
+  }
+
+  currentSession(): WorkspaceSession {
+    return this;
   }
 
   repo(id: string): Repo {

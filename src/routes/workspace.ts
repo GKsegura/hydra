@@ -2,11 +2,11 @@
 import express from 'express';
 import { HttpError, str } from '../http.ts';
 import { branchOverview, checkoutMany, commitMany, createMany, mergeMany, previewMany } from '../multi.ts';
-import type { Session } from '../server.ts';
 import type { Repo } from '../workspace.ts';
+import type { WorkspaceScope } from '../workspace-session.ts';
 
 /** Operações no workspace inteiro (vários repos de uma vez): /api/workspace/… */
-export function workspaceRoutes(ctx: { session: Session }) {
+export function workspaceRoutes(ctx: { session: WorkspaceScope }) {
   const r = express.Router();
 
   // Mesma mensagem em vários repos. O push, se pedido, é feito depois pela interface, repo a repo (com progresso).
