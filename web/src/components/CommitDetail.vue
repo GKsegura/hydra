@@ -40,7 +40,7 @@ const parents = computed(() => detail.value?.parents ?? commit.value?.parents ??
 
 function gotoParent(p: string) {
   if (state.graphs[props.repoId]?.commits.some((c) => c.hash === p)) selectCommit(props.repoId, p, true);
-  else toast('Esse commit está fora dos carregados (--max).');
+  else toast('Esse commit ainda não foi carregado: role o grafo até o fim para carregar mais.');
 }
 
 async function copy() {

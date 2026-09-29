@@ -315,7 +315,8 @@ if (!app.requestSingleInstanceLock()) {
     // Porta fixa (com fallback para as seguintes): o layout salvo no navegador interno é por origem/porta.
     const opts: ServerOptions = {
       port: 47110,
-      max: 1000,
+      // Teto de commits por repo que o front pode pedir (?limit=). A carga inicial (250) e o "carregar mais" vêm do front.
+      max: 20_000,
       desktop: true,
       recentsFile: path.join(app.getPath('userData'), 'recents.json'),
       secrets: secretStore(),

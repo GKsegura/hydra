@@ -23,6 +23,8 @@ export const state = reactive({
   opening: false,
   summary: null as WorkspaceSummary | null,
   graphs: {} as Record<string, RepoGraph>,
+  graphLimit: {} as Record<string, number>, // quantos commits pedir por repo (cresce em GRAPH_PAGE ao rolar até o fim)
+  loadingMore: {} as Record<string, boolean>,
   visible: [] as string[], // repos com painel aberto, na ordem do workspace
   sizes: {} as Record<string, number>, // flex-grow de cada painel
   timeline: false, // painel "Timeline unificada" (commits de todos os repos visíveis numa linha do tempo só)
@@ -190,20 +192,46 @@ export function moveSelection(delta: 1 | -1) {
 
 // ------------------------------------------------------------------ painéis
 
+/** Commits carregados por vez em cada repo (a carga inicial e cada "carregar mais"). */
+export const GRAPH_PAGE = 250;
+/** Repos carregados ao mesmo tempo na abertura: vários `git log` simultâneos não deixam o resultado aparecer antes. */
+const GRAPH_CONCURRENCY = 2;
+
+/** Grafo do repo com o limite atual dele (o watcher e os commits recarregam sem perder as páginas já carregadas). */
+export function fetchGraph(id: string): Promise<RepoGraph> {
+  return api.graph(id, state.graphLimit[id] ??= GRAPH_PAGE);
+}
+
+/** Carrega os grafos que faltam: cada repo aparece assim que fica pronto (o ativo primeiro), no máximo 2 por vez. */
 async function ensureGraphs(ids: string[]) {
-  const missing = ids.filter((id) => !state.graphs[id]);
-  const loaded = await Promise.all(
-    missing.map((id) =>
-      api.graph(id).catch((err: Error) => {
-        toast(err.message, 'error');
-        return null;
-      }),
-    ),
-  );
-  missing.forEach((id, i) => {
-    const g = loaded[i];
-    if (g) state.graphs[id] = g;
-  });
+  const queue = ids.filter((id) => !state.graphs[id]).sort((a, b) => Number(b === state.active) - Number(a === state.active));
+  const worker = async () => {
+    for (let id = queue.shift(); id; id = queue.shift()) {
+      try {
+        state.graphs[id] = await fetchGraph(id);
+      } catch (err) {
+        toast((err as Error).message, 'error');
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(GRAPH_CONCURRENCY, queue.length) }, worker));
+}
+
+/** Busca mais uma página de commits do repo (se houver). O grafo é recalculado no servidor com o novo limite. */
+export async function loadMore(id: string) {
+  const g = state.graphs[id];
+  if (IS_STATIC || !g?.truncated || state.loadingMore[id]) return;
+  state.loadingMore[id] = true;
+  const previous = state.graphLimit[id];
+  try {
+    state.graphLimit[id] = g.commits.length + GRAPH_PAGE;
+    state.graphs[id] = await fetchGraph(id);
+  } catch (err) {
+    state.graphLimit[id] = previous;
+    toast((err as Error).message, 'error');
+  } finally {
+    state.loadingMore[id] = false;
+  }
 }
 
 /** Mostra o painel do repo (se estiver oculto) e coloca o foco nele. */
@@ -320,6 +348,8 @@ function resetWorkspaceState() {
   state.pulls = {};
   state.menu = null;
   state.graphs = {};
+  state.graphLimit = {};
+  state.loadingMore = {};
   state.visible = [];
   state.sizes = {};
   state.timeline = false;
@@ -421,7 +451,7 @@ export async function commitStaged(id: string) {
   state.amend[id] = false;
   toast(`${amend ? 'Commit emendado' : 'Commit'} ${res.hash.slice(0, 7)} ${amend ? 'em' : 'criado em'} ${repoById(id)?.name}`, 'ok');
   repoById(id)!.status = res.status;
-  state.graphs[id] = await api.graph(id);
+  state.graphs[id] = await fetchGraph(id);
   selectCommit(id, res.hash, true);
 }
 
@@ -494,7 +524,7 @@ export async function refreshRepo(id: string) {
   const r = repoById(id);
   if (!r) return;
   try {
-    const [status, graph] = await Promise.all([api.status(id), api.graph(id)]);
+    const [status, graph] = await Promise.all([api.status(id), fetchGraph(id)]);
     r.status = status;
     state.graphs[id] = graph;
     await Promise.all([

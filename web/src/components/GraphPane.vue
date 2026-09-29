@@ -1,11 +1,11 @@
 <!-- Hydra — © 2026 José Segura (GKsegura) · MIT -->
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { IS_STATIC } from '../api.ts';
 import { commitMenu, discard, openDialog, openIn, openMenu, openOnGitHub } from '../actions.ts';
 import { openTerminal, terminalAvailable } from '../terminal.ts';
 import { edgePath, laneX, rowY } from '../graph.ts';
-import { headRow, hideRepo, matches, repoById, repoColor, selectCommit, selectDefault, selectWip, state, statusOf } from '../store.ts';
+import { headRow, hideRepo, loadMore, matches, repoById, repoColor, selectCommit, selectDefault, selectWip, state, statusOf } from '../store.ts';
 import { ago, COL, COLORS, fullDate, PAD, ROW } from '../utils.ts';
 import AppIcon from './AppIcon.vue';
 import BranchMenu from './BranchMenu.vue';
@@ -71,6 +71,16 @@ watch(
     if (top < box.scrollTop || top > box.scrollTop + visible - ROW * 2) box.scrollTop = Math.max(0, top - visible / 3);
   },
 );
+
+// Chegou perto do fim? Busca a próxima página. Também roda quando o grafo muda: se a página não enche a
+// altura do painel, não haveria rolagem para disparar o carregamento.
+const LOAD_AHEAD = ROW * 30;
+function maybeLoadMore() {
+  const box = scroller.value;
+  if (!box || !graph.value?.truncated) return;
+  if (box.scrollHeight - box.scrollTop - box.clientHeight < LOAD_AHEAD) void loadMore(props.repoId);
+}
+watch(() => graph.value?.commits.length, () => nextTick(maybeLoadMore));
 
 /** Menu "⋯" do painel: ações do repositório. */
 function repoMenu(ev: MouseEvent) {
@@ -138,7 +148,7 @@ function rowMenu(ev: MouseEvent, i: number) {
     </div>
     <OperationBanner v-if="!IS_STATIC" :repo-id="repoId" />
 
-    <div ref="scroller" class="graph-scroll">
+    <div ref="scroller" class="graph-scroll" @scroll.passive="maybeLoadMore">
       <div class="graph-head">
         <div class="h-refs">BRANCH / TAG</div>
         <div class="h-graph">GRAPH</div>
@@ -193,8 +203,14 @@ function rowMenu(ev: MouseEvent, i: number) {
 
           <div v-if="!graph" class="empty">Carregando…</div>
           <div v-else-if="!commits.length && !wip" class="empty">Este repositório ainda não tem commits.</div>
-          <div v-if="graph?.truncated" class="trunc">
+          <div v-if="graph?.truncated && IS_STATIC" class="trunc">
             Mostrando os {{ commits.length }} commits mais recentes · use <code>--max</code> para carregar mais
+          </div>
+          <div v-else-if="graph?.truncated" class="trunc">
+            {{ commits.length }} commits mais recentes ·
+            <button class="btn ghost" :disabled="state.loadingMore[repoId]" @click="loadMore(repoId)">
+              {{ state.loadingMore[repoId] ? 'Carregando…' : 'Carregar mais' }}
+            </button>
           </div>
         </div>
       </div>
