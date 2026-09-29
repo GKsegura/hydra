@@ -12,7 +12,7 @@ describe('GET /repos/:id/graph?limit=', () => {
     try {
       const id = srv.session.current().repos[0].id;
       const get = (q: string) =>
-        fetch(`http://127.0.0.1:${srv.port}/api/repos/${id}/graph${q}`, { headers: { 'x-hydra-token': srv.token } });
+        fetch(`http://127.0.0.1:${srv.port}/api/w/${srv.session.active!.id}/repos/${id}/graph${q}`, { headers: { 'x-hydra-token': srv.token } });
       const body = async (q: string) => (await (await get(q)).json()) as { commits: unknown[]; truncated: boolean };
 
       const small = await body('?limit=10');

@@ -7,17 +7,10 @@ import type { WorkspaceScope } from '../workspace-session.ts';
 export function terminalRoutes(ctx: { session: WorkspaceScope; terminals: Terminals }) {
   const r = express.Router();
 
-  r.get('/terminal', (_req, res) => {
-    res.json(ctx.terminals.info());
-  });
-  // A pasta vem do repo do workspace aberto, nunca do corpo da requisição.
+  // A pasta vem do repo do workspace da rota, nunca do corpo da requisição. (Info do shell e encerramento por id: em server.ts.)
   r.post('/repos/:id/terminals', (req, res) => {
     const workspace = ctx.session.currentSession();
     res.json(ctx.terminals.spawn(workspace.repo(String(req.params.id)), req.body?.cols, req.body?.rows, workspace.id));
-  });
-  r.delete('/terminals/:tid', (req, res) => {
-    ctx.terminals.kill(String(req.params.tid));
-    res.json({ ok: true });
   });
 
   return r;

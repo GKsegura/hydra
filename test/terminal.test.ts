@@ -116,7 +116,7 @@ describe.skipIf(!available)('WebSocket do terminal', () => {
     const srv = await startServer(dir, { port: 0, max: 10, recentsFile: path.join(tmpDir(), 'recents.json') });
     const repoId = srv.session.current().repos[0].id;
     const base = `127.0.0.1:${srv.port}`;
-    const res = await fetch(`http://${base}/api/repos/${repoId}/terminals`, {
+    const res = await fetch(`http://${base}/api/w/${srv.session.active!.id}/repos/${repoId}/terminals`, {
       method: 'POST',
       headers: { 'x-hydra-token': srv.token, 'content-type': 'application/json' },
       body: JSON.stringify({ cols: 80, rows: 24 }),

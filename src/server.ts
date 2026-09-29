@@ -314,8 +314,7 @@ export function createApp(
   });
 
   /**
-   * As rotas que trabalham dentro de um workspace. Montadas duas vezes: em `/w/:wid/...` (um workspace qualquer, pelo id)
-   * e sem prefixo (o workspace ativo — o front atual ainda usa estas).
+   * As rotas que trabalham dentro de um workspace, montadas em `/w/:wid/...` (um workspace qualquer, pelo id).
    */
   const scopedRoutes = (scope: WorkspaceScope): Router => {
     const r = express.Router();
@@ -411,13 +410,21 @@ export function createApp(
     req.on('close', unsubscribe);
   });
 
+  // Terminais: a informação do shell e o encerramento por id não dependem de qual guia está aberta.
+  api.get('/terminal', (_req, res) => {
+    res.json(terminals.info());
+  });
+  api.delete('/terminals/:tid', (req, res) => {
+    terminals.kill(String(req.params.tid));
+    res.json({ ok: true });
+  });
+
   api.use(appRoutes({ jobs, github }));
   api.use('/w/:wid', (req, res, next) => {
     const workspace = session.get(String(req.params.wid));
     if (!workspace) return next(new HttpError(404, 'Workspace não encontrado'));
     routerOf(workspace)(req, res, next);
   });
-  api.use(scopedRoutes(session)); // sem prefixo: o workspace ativo
 
   api.use((_req, _res, next) => next(new HttpError(404, 'Rota não encontrada')));
   app.use('/api', api);

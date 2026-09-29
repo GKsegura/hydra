@@ -54,7 +54,7 @@ describe('API com vários workspaces', () => {
     }
   });
 
-  it('/w/:wid alcança um workspace que não é o ativo; sem prefixo vale o ativo; wid desconhecido dá 404', async () => {
+  it('/w/:wid alcança um workspace que não é o ativo; rota sem prefixo não existe; wid desconhecido dá 404', async () => {
     const { srv, call, json } = await boot();
     try {
       const [a, b] = [makeRepo(), makeRepo()];
@@ -68,8 +68,9 @@ describe('API com vários workspaces', () => {
       expect(statusA.branch).toBe('so-no-a');
       expect(statusB.branch).toBe('main');
 
-      const legacy = await json<{ branch: string }>('GET', `/repos/${repoIdOf(srv, wb)}/status`);
-      expect(legacy.branch).toBe('main'); // sem prefixo = ativo (b)
+      // As rotas sem prefixo (que valiam para o workspace ativo) foram removidas: tudo passa por /w/:wid.
+      expect((await call('GET', `/repos/${repoIdOf(srv, wb)}/status`)).status).toBe(404);
+      expect((await call('GET', '/workspace')).status).toBe(404);
 
       expect((await json<{ name: string }>('GET', `/w/${wa}/workspace`)).name).toBe(path.basename(a));
       expect((await call('GET', '/w/naoexiste/workspace')).status).toBe(404);
@@ -90,7 +91,7 @@ describe('API com vários workspaces', () => {
       const home = await json<Tabs>('POST', '/session/active', { id: null });
       expect(home.active).toBeNull();
       expect(home.workspace).toBeNull();
-      expect((await call('GET', '/workspace')).status).toBe(409); // sem workspace ativo
+      expect((await call('GET', `/w/${ids[0]}/workspace`)).status).toBe(200); // no Início, as guias continuam abertas
       expect((await call('POST', '/session/active', { id: 'naoexiste' })).status).toBe(404);
       expect((await call('POST', '/session/active', { id: 7 })).status).toBe(400);
 
@@ -98,6 +99,18 @@ describe('API com vários workspaces', () => {
       expect((await json<Tabs>('POST', '/session/order', { ids: reversed })).tabs.map((t) => t.id)).toEqual(reversed);
       expect((await call('POST', '/session/order', { ids: [ids[0]] })).status).toBe(400); // faltam guias
       expect((await call('POST', '/session/order', { ids: [ids[0], ids[0], ids[1]] })).status).toBe(400); // repetida
+    } finally {
+      srv.server.close();
+    }
+  });
+
+  it('informações do terminal não dependem de haver workspace aberto', async () => {
+    const { srv, call } = await boot();
+    try {
+      const res = await call('GET', '/terminal');
+      expect(res.status).toBe(200);
+      expect(await res.json()).toHaveProperty('available');
+      expect((await call('DELETE', '/terminals/0000000000000000')).status).toBe(200);
     } finally {
       srv.server.close();
     }
