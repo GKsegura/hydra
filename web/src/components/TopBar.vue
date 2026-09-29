@@ -40,12 +40,12 @@ function clear(ev: KeyboardEvent) {
     </div>
     <WorkspaceMenu />
     <div class="spacer" />
-    <label v-if="state.summary && !state.welcome" class="filter">
+    <label v-if="state.summary" class="filter">
       <AppIcon name="search" />
       <input ref="input" v-model="state.filter" type="search" placeholder="Filtrar commits (Ctrl+F)" autocomplete="off" @keydown.esc="clear">
       <span class="muted">{{ count }}</span>
     </label>
-    <button v-if="!IS_STATIC && state.summary && !state.welcome" class="btn ghost" title="Atualizar (F5)" @click="refresh"><AppIcon name="refresh" /> Atualizar</button>
+    <button v-if="!IS_STATIC && state.summary" class="btn ghost" title="Atualizar (F5)" @click="refresh"><AppIcon name="refresh" /> Atualizar</button>
     <UpdateNotice v-if="desktop" />
     <GitHubAccount v-if="!IS_STATIC" />
     <span class="mode" :class="{ live: !IS_STATIC }">{{ IS_STATIC ? `estático · ${generated}` : '● ao vivo' }}</span>

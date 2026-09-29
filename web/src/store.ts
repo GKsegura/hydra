@@ -1,6 +1,6 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 import { reactive } from 'vue';
-import { api, desktop, eventsUrl, IS_STATIC } from './api.ts';
+import { api, desktop, eventsUrl, IS_STATIC, setCurrentWorkspace, setStaleHandler } from './api.ts';
 import type {
   AppInfo, BranchInfo, Commit, ConflictFile, GitHubInfo, OperationInfo, PullsInfo, RepoGraph, RepoStatus, Selection, TerminalInfo,
   WorkspaceSummary,
@@ -19,8 +19,7 @@ interface DiffView {
 }
 
 export const state = reactive({
-  app: null as AppInfo | null, // workspace aberto + recentes (modo servidor)
-  welcome: false, // tela inicial aberta por cima de um workspace ("Abrir outro…")
+  app: null as AppInfo | null, // guias abertas, guia ativa (null = Início) e recentes (modo servidor)
   opening: false,
   summary: null as WorkspaceSummary | null,
   graphs: {} as Record<string, RepoGraph>,
@@ -97,6 +96,7 @@ export interface JobState {
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 export function toast(msg: string, kind: '' | 'ok' | 'error' = '') {
+  if (!msg) return; // resposta descartada por troca de guia (StaleTabError) não tem mensagem
   state.toast = { msg, kind, show: true };
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (state.toast.show = false), kind === 'error' ? 6000 : 2600);
@@ -127,7 +127,7 @@ export function matches(c: Commit, q: string): boolean {
 // ------------------------------------------------------------------ layout salvo (por workspace)
 
 // Chave pelo caminho do workspace (dois projetos com o mesmo nome não se misturam); a antiga, pelo nome, serve de reserva.
-const layoutKey = () => layoutKeyFor(state.app?.workspace?.source ?? null, state.summary?.name);
+const layoutKey = () => layoutKeyFor(state.app?.tabs.find((t) => t.id === currentWid)?.source ?? null, state.summary?.name);
 
 export function saveLayout() {
   try {
@@ -293,18 +293,34 @@ export function equalize() {
 
 // ------------------------------------------------------------------ carga
 
-let refreshing = false;
+let adoptedServerTab = false;
+/** O AppInfo do servidor, mas com a guia ativa que a interface está mostrando. */
+function withLocalActive(info: AppInfo): AppInfo {
+  const tab = info.tabs.find((t) => t.id === currentWid);
+  return { ...info, active: tab ? currentWid : null, workspace: tab ? { ...tab } : null };
+}
+
+// Um refresh por guia por vez; se a guia mudou no meio, o refresh da nova guia pode começar (o antigo será descartado).
+let refreshSeq = 0;
+let refreshingWid: string | null | undefined;
 export async function refresh() {
-  if (refreshing) return;
-  refreshing = true;
+  if (refreshingWid !== undefined && refreshingWid === currentWid) return;
+  const seq = ++refreshSeq;
+  refreshingWid = currentWid;
   try {
     if (!IS_STATIC) {
-      state.app = await api.app();
-      if (state.app.notice) toast(state.app.notice, 'error');
-      if (!state.app.workspace) {
-        state.summary = null;
-        return;
+      const info = await api.app();
+      if (info.notice) toast(info.notice, 'error');
+      if (!adoptedServerTab) {
+        // Primeira carga: quem manda é o servidor (ele reabriu as guias salvas e sabe qual estava ativa).
+        adoptedServerTab = true;
+        state.app = info;
+        switchTo(info.active);
+      } else {
+        // Depois disso a guia ativa é a local: a troca de guia avisa o servidor sem esperar, então a resposta pode estar atrasada.
+        state.app = withLocalActive(info);
       }
+      if (!currentWid) return;
     }
     const first = !state.summary;
     const summary = await api.workspace();
@@ -336,48 +352,136 @@ export async function refresh() {
   } catch (err) {
     toast((err as Error).message, 'error');
   } finally {
-    refreshing = false;
+    if (seq === refreshSeq) refreshingWid = undefined;
   }
 }
 
 // ------------------------------------------------------------------ workspaces (abrir / trocar / fechar)
 
-/** Limpa tudo que pertence ao workspace atual; o layout salvo de cada um continua no localStorage. */
-function resetWorkspaceState() {
-  state.summary = null;
-  state.branchInfo = {};
-  state.operations = {};
-  state.conflict = null;
-  state.amend = {};
-  state.pulls = {};
-  state.menu = null;
-  state.graphs = {};
-  state.graphLimit = {};
-  state.loadingMore = {};
-  state.visible = [];
-  state.sizes = {};
-  state.timeline = false;
-  state.timelineOnly = false;
-  state.active = null;
-  state.selected = null;
-  state.drafts = {};
-  state.diff = null;
-  state.filter = '';
-  state.scroll = null;
-  // O servidor encerra os shells do workspace anterior ao trocar/fechar.
-  state.terminal.tabs = [];
-  state.terminal.active = null;
+// Guias: o `state` sempre mostra a guia ativa. Ao trocar, o que é de uma guia (grafos, painéis, seleção…) é guardado
+// aqui e o da outra guia volta para o `state`. Só a guia ativa está montada na tela.
+
+/** A guia ativa (id do workspace); null = Início (tela inicial). É a mesma que a API usa para montar as rotas /w/<id>. */
+let currentWid: string | null = null;
+
+const TAB_KEYS = [
+  'summary', 'graphs', 'graphLimit', 'loadingMore', 'visible', 'sizes', 'timeline', 'timelineOnly', 'active', 'selected',
+  'filter', 'drafts', 'diff', 'scroll', 'branchInfo', 'operations', 'conflict', 'amend', 'pulls', 'jobs',
+] as const;
+
+/** O que é de uma guia. Os shells (terminais) ficam vivos no servidor; aqui só a lista deles. */
+interface TabValues {
+  fields: Pick<typeof state, (typeof TAB_KEYS)[number]>;
+  terminalTabs: TerminalTab[];
+  terminalActive: string | null;
 }
 
+/** Valores de uma guia recém-aberta (ou do Início). */
+function emptyTab(): TabValues {
+  return {
+    fields: {
+      summary: null, graphs: {}, graphLimit: {}, loadingMore: {}, visible: [], sizes: {}, timeline: false, timelineOnly: false,
+      active: null, selected: null, filter: '', drafts: {}, diff: null, scroll: null, branchInfo: {}, operations: {},
+      conflict: null, amend: {}, pulls: {}, jobs: {},
+    },
+    terminalTabs: [],
+    terminalActive: null,
+  };
+}
+
+const tabData = new Map<string, { values: TabValues; stale: boolean }>();
+
+function readTab(): TabValues {
+  const fields = {} as Record<string, unknown>;
+  for (const k of TAB_KEYS) fields[k] = state[k];
+  return { fields: fields as TabValues['fields'], terminalTabs: state.terminal.tabs, terminalActive: state.terminal.active };
+}
+
+function writeTab(v: TabValues) {
+  const target = state as Record<string, unknown>;
+  for (const k of TAB_KEYS) target[k] = v.fields[k];
+  state.terminal.tabs = v.terminalTabs;
+  state.terminal.active = v.terminalActive;
+  state.dialog = null; // diálogos e menus se referem a repos da guia anterior
+  state.menu = null;
+}
+
+/** Guia que estava aberta antes desta (para o Esc na tela inicial voltar para ela). */
+let previousWid: string | null = null;
+
+/**
+ * Passa a guia ativa para `id` (null = Início) só no estado local: guarda a atual, carrega a outra (ou uma vazia, se ainda
+ * não foi carregada). Respostas de requisições da guia anterior que chegarem depois são descartadas pelo api.ts.
+ * Devolve se a guia nova precisa ser (re)carregada: nunca foi carregada ou mudou por trás enquanto estava em segundo plano.
+ */
+function switchTo(id: string | null, save = true): boolean {
+  if (id === currentWid) return false;
+  if (currentWid && save) tabData.set(currentWid, { values: readTab(), stale: false });
+  if (currentWid) previousWid = currentWid;
+  const data = id ? tabData.get(id) : undefined;
+  const load = !!id && (!data || data.stale || !data.values.fields.summary);
+  currentWid = id;
+  setCurrentWorkspace(id);
+  writeTab(data?.values ?? emptyTab());
+  if (data) data.stale = false;
+  if (state.app) {
+    const tab = state.app.tabs.find((t) => t.id === id);
+    state.app = { ...state.app, active: id, workspace: tab ? { ...tab } : null };
+  }
+  return load;
+}
+
+/** Id da guia ativa (null = Início). */
+export const currentTab = () => currentWid;
+
+/** Marca uma guia guardada como desatualizada: ela recarrega quando for aberta. */
+export function markTabStale(id: string) {
+  const data = tabData.get(id);
+  if (data) data.stale = true;
+}
+const markStale = markTabStale;
+setStaleHandler(markStale);
+
+/** Vai para uma guia (id) ou para o Início (null) e recarrega se ela estava desatualizada. */
+export async function activateTab(id: string | null) {
+  if (id === currentWid) return;
+  const load = switchTo(id);
+  api.setActiveTab(id).catch((err: Error) => toast(err.message, 'error'));
+  if (load) await refresh();
+}
+
+/** Volta para a guia que estava aberta antes (Esc na tela inicial). */
+export function backToPreviousTab() {
+  if (previousWid && state.app?.tabs.some((t) => t.id === previousWid)) return activateTab(previousWid);
+  const first = state.app?.tabs[0];
+  return first ? activateTab(first.id) : undefined;
+}
+
+/** Vai para a guia seguinte (+1) ou anterior (-1), sem passar pelo Início. */
+export function cycleTab(delta: 1 | -1) {
+  const tabs = state.app?.tabs ?? [];
+  if (tabs.length < 2) return;
+  const i = tabs.findIndex((t) => t.id === currentWid);
+  return activateTab(tabs[(i + delta + tabs.length) % tabs.length].id);
+}
+
+/** Muda a ordem das guias (arrastar). `ids` são só os workspaces; o Início não entra. */
+export function reorderTabs(ids: string[]) {
+  if (!state.app) return;
+  const byId = new Map(state.app.tabs.map((t) => [t.id, t]));
+  state.app = { ...state.app, tabs: ids.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])) };
+  api.reorderTabs(ids).catch((err: Error) => toast(err.message, 'error'));
+}
+
+/** Abre um workspace em uma nova guia (ou ativa a guia dele, se já estiver aberto). */
 export async function openWorkspace(path: string): Promise<boolean> {
   if (!path.trim() || state.opening) return false;
   state.opening = true;
   try {
-    state.app = await api.openWorkspace(path);
-    resetWorkspaceState();
-    state.welcome = false;
-    await refresh();
-    toast(`Workspace ${state.app.workspace?.name} aberto`, 'ok');
+    const info = await api.openWorkspace(path);
+    state.app = info;
+    if (switchTo(info.active)) await refresh();
+    toast(`Workspace ${info.workspace?.name} aberto`, 'ok');
     return true;
   } catch (err) {
     toast((err as Error).message, 'error');
@@ -387,25 +491,29 @@ export async function openWorkspace(path: string): Promise<boolean> {
   }
 }
 
-/** Abre o seletor nativo (app desktop). No navegador, mostra a tela inicial com o campo de caminho. */
+/** Abre o seletor nativo (app desktop). No navegador, leva ao Início, que tem o campo de caminho. */
 export async function pickWorkspace(kind: 'file' | 'folder' = 'file') {
-  if (!desktop) {
-    state.welcome = true;
-    return;
-  }
+  if (!desktop) return activateTab(null);
   const path = await desktop.pickWorkspace(kind);
   if (path) await openWorkspace(path);
 }
 
-export async function closeWorkspace() {
+/** Fecha uma guia (a atual, se não disser qual). O servidor encerra os terminais e watchers dela. */
+export async function closeTab(id: string | null = currentWid) {
+  if (!id) return;
   try {
-    state.app = await api.closeWorkspace();
-    resetWorkspaceState();
-    state.welcome = false;
+    const info = await api.closeTab(id);
+    const wasCurrent = id === currentWid;
+    tabData.delete(id);
+    state.app = wasCurrent ? info : withLocalActive(info); // fechando a atual, o servidor escolhe a vizinha
+    if (wasCurrent && switchTo(info.active, false)) await refresh(); // a guia fechada não é guardada
   } catch (err) {
     toast((err as Error).message, 'error');
   }
 }
+
+/** Fecha a guia atual. */
+export const closeWorkspace = () => closeTab();
 
 export async function removeRecent(path: string) {
   try {
@@ -614,8 +722,9 @@ export function connectEvents() {
   events.onerror = () => (state.live = false);
   events.onmessage = (ev) => {
     const change = JSON.parse(ev.data) as { workspaceId?: string; repoId: string; kind: ChangeKind };
-    // O servidor avisa de todos os workspaces abertos; este front só mostra o ativo (ids de repo se repetem entre workspaces).
-    if (change.workspaceId && change.workspaceId !== state.app?.workspace?.id) return;
+    // O servidor avisa de todos os workspaces abertos. Só a guia ativa recarrega na hora (ids de repo se repetem entre
+    // workspaces); as outras ficam marcadas como desatualizadas e recarregam quando forem abertas.
+    if (change.workspaceId && change.workspaceId !== currentWid) return markStale(change.workspaceId);
     onRepoChange(change.repoId, change.kind);
   };
 }

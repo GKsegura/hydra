@@ -2,8 +2,8 @@
 // Ações git no estilo do GitHub Desktop: cada função chama a API, mostra progresso/erros e recarrega o repo.
 import { api, ApiError, desktop, followJob } from './api.ts';
 import {
-  hasWip, loadBranches, loadOperation, openWorkspace, refreshRepo, repoById, run, selectCommit, selectWip, state, statusOf, toast,
-  type MenuItem,
+  currentTab, hasWip, loadBranches, loadOperation, markTabStale, openWorkspace, refreshRepo, repoById, run, selectCommit, selectWip, state,
+  statusOf, toast, type MenuItem,
 } from './store.ts';
 import type { Commit, Progress, Ref } from './types.ts';
 
@@ -32,14 +32,18 @@ export function confirm(opts: { title: string; message: string; confirm?: string
 // ------------------------------------------------------------------ jobs (operações longas)
 
 async function withJob<T>(id: string, label: string, start: () => Promise<{ jobId: string }>): Promise<T> {
-  state.jobs[id] = { label, phase: 'Iniciando…', percent: null };
+  // O progresso vai para as operações da guia que iniciou o job, mesmo que o usuário troque de guia no meio.
+  const jobs = state.jobs;
+  const tab = currentTab();
+  jobs[id] = { label, phase: 'Iniciando…', percent: null };
   try {
     const { jobId } = await start();
     return await followJob<T>(jobId, (p: Progress) => {
-      state.jobs[id] = { label, phase: p.phase, percent: p.percent };
+      jobs[id] = { label, phase: p.phase, percent: p.percent };
     });
   } finally {
-    delete state.jobs[id];
+    delete jobs[id];
+    if (tab && currentTab() !== tab) markTabStale(tab); // terminou em segundo plano: a guia mudou e recarrega ao voltar
   }
 }
 

@@ -15,7 +15,10 @@ import TerminalDock from './components/TerminalDock.vue';
 import TopBar from './components/TopBar.vue';
 import WelcomeScreen from './components/WelcomeScreen.vue';
 import WipPanel from './components/WipPanel.vue';
-import { closeDiff, closeWorkspace, connectEvents, hasWip, moveSelection, openWorkspace, pickWorkspace, refresh, state } from './store.ts';
+import TabBar from './components/TabBar.vue';
+import {
+  backToPreviousTab, closeDiff, closeWorkspace, connectEvents, cycleTab, hasWip, moveSelection, openWorkspace, pickWorkspace, refresh, state,
+} from './store.ts';
 import { loadTerminalInfo, toggleTerminal } from './terminal.ts';
 
 const topbar = ref<InstanceType<typeof TopBar>>();
@@ -25,8 +28,8 @@ watchEffect(() => {
   document.title = state.summary ? `${state.summary.name} — Hydra` : 'Hydra';
 });
 
-// Tela inicial: sem workspace aberto, ou quando o usuário pediu "Abrir outro…" no navegador.
-const showWelcome = computed(() => !IS_STATIC && !!state.app && (!state.app.workspace || state.welcome));
+// Tela inicial: é a guia "Início" (sem workspace ativo).
+const showWelcome = computed(() => !IS_STATIC && !!state.app && state.app.active === null);
 
 /** Ações do menu do app desktop e dos atalhos de teclado. Sem repo em foco, as de repositório são ignoradas. */
 function runAction(action: string) {
@@ -68,6 +71,17 @@ function onKey(ev: KeyboardEvent) {
     ev.preventDefault();
     return runAction('workspace-commit');
   }
+  // Guias. No navegador, Ctrl+W e Ctrl+Tab são do próprio navegador e não dá para interceptar; no app funcionam.
+  if (ctrl && desktop && !IS_STATIC) {
+    if (key === 'w' && !ev.shiftKey) {
+      ev.preventDefault();
+      return closeWorkspace();
+    }
+    if (ev.key === 'Tab') {
+      ev.preventDefault();
+      return cycleTab(ev.shiftKey ? -1 : 1);
+    }
+  }
   // Dentro do terminal integrado, as teclas são do shell (Ctrl+F, F5, setas…).
   if ((ev.target as HTMLElement).closest?.('.xterm')) return;
   if (ctrl && !IS_STATIC) {
@@ -91,8 +105,8 @@ function onKey(ev: KeyboardEvent) {
     return refresh();
   }
   if (ev.key === 'Escape' && state.diff) return closeDiff();
-  if (ev.key === 'Escape' && state.welcome) {
-    state.welcome = false;
+  if (ev.key === 'Escape' && showWelcome.value && !inField && state.app?.tabs.length) {
+    void backToPreviousTab();
     return;
   }
   if (inField || showWelcome.value) return;
@@ -146,6 +160,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="app-root" @dragover="onDragOver" @dragleave.self="dropping = false" @drop="onDrop">
     <TopBar ref="topbar" />
+    <TabBar v-if="!IS_STATIC && state.app" />
     <WelcomeScreen v-if="showWelcome" />
     <template v-else-if="state.summary">
       <RepoCards />

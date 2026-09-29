@@ -794,3 +794,24 @@ a { color: var(--accent); }
 .wc-results li.conflict .wc-icon { color: var(--warn); }
 .xrepo { margin-left: auto; font-size: 10.5px; padding: 0 5px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); cursor: pointer; flex: none; }
 .xrepo:hover { background: var(--accent); color: #fff; }
+
+/* ---------------------------------------------------------------- guias de workspace */
+
+.tabbar {
+  display: flex; align-items: flex-end; gap: 2px; padding: 6px 10px 0; background: var(--bg);
+  border-bottom: 1px solid var(--line); overflow-x: auto; flex: none;
+}
+.tab {
+  display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px 0 12px; max-width: 220px; cursor: pointer;
+  color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0;
+  white-space: nowrap; user-select: none;
+}
+.tab:hover { color: var(--text); background: var(--panel-2); }
+.tab.active { color: var(--text); background: var(--panel-2); box-shadow: inset 0 2px 0 var(--accent); }
+.tab.home { padding-right: 12px; }
+.tab.home svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.tab-name { overflow: hidden; text-overflow: ellipsis; }
+.tab .x { width: 18px; height: 18px; display: inline-grid; place-items: center; border-radius: 4px; font-size: 11px; color: var(--faint); flex: none; }
+.tab .x:hover { background: var(--bg); color: var(--text); }
+.tab.over { box-shadow: inset 2px 0 0 var(--accent); }
+.tab.dragging { opacity: .5; }

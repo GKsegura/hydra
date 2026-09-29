@@ -25,10 +25,6 @@ async function submit() {
         </div>
       </div>
 
-      <button v-if="state.welcome && state.app?.workspace" class="btn ghost back" @click="state.welcome = false">
-        ← Voltar para {{ state.app.workspace.name }}
-      </button>
-
       <section class="welcome-cards">
         <button class="welcome-card" @click="openDialog('clone')">
           <span class="wc-ico">⤓</span>

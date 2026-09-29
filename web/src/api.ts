@@ -19,7 +19,23 @@ export class ApiError extends Error {
   }
 }
 
-async function call<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+/** A guia (workspace) em que o usuário está agora; as chamadas de workspace vão para `/w/<id>/...`. */
+let currentWid: string | null = null;
+export const setCurrentWorkspace = (id: string | null) => (currentWid = id);
+
+/** Chamado quando uma resposta chega depois de o usuário trocar de guia: o estado daquela guia mudou por trás e precisa recarregar. */
+let onStale: ((wid: string) => void) | null = null;
+export const setStaleHandler = (fn: (wid: string) => void) => (onStale = fn);
+
+/** A resposta é de uma guia que já não é a atual e foi descartada (sem mensagem: a interface não mostra erro por isso). */
+export class StaleTabError extends ApiError {
+  constructor() {
+    super('', 'stale_tab');
+  }
+}
+
+async function call<T>(path: string, init: { method?: string; body?: unknown; guard?: boolean } = {}): Promise<T> {
+  const wid = init.guard === false ? undefined : /^\/w\/([^/]+)/.exec(path)?.[1];
   const res = await fetch(`/api${path}`, {
     method: init.method ?? 'GET',
     headers: {
@@ -29,11 +45,16 @@ async function call<T>(path: string, init: { method?: string; body?: unknown } =
     body: init.body ? JSON.stringify(init.body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
+  // Guia trocada (ou fechada) enquanto a resposta vinha: não deixa o resultado cair no estado de outra guia.
+  if (wid && decodeURIComponent(wid) !== currentWid) {
+    onStale?.(decodeURIComponent(wid));
+    throw new StaleTabError();
+  }
   if (!res.ok) throw new ApiError(data.error || `Erro ${res.status}`, data.code);
   return data as T;
 }
 
-const post = <T>(path: string, body: unknown = {}) => call<T>(path, { method: 'POST', body });
+const post = <T>(path: string, body: unknown = {}, guard = true) => call<T>(path, { method: 'POST', body, guard });
 
 /** Acompanha uma operação longa (clone, fetch, pull, push…) até terminar, repassando o progresso. */
 export function followJob<T = unknown>(jobId: string, onProgress: (p: Progress) => void): Promise<T> {
@@ -57,7 +78,12 @@ export function followJob<T = unknown>(jobId: string, onProgress: (p: Progress) 
 }
 
 const enc = encodeURIComponent;
-const repo = (id: string) => `/repos/${enc(id)}`;
+/** Prefixo das rotas do workspace da guia atual. Sem guia aberta não há o que chamar. */
+function ws(): string {
+  if (!currentWid) throw new ApiError('Nenhum workspace aberto');
+  return `/w/${enc(currentWid)}`;
+}
+const repo = (id: string) => `${ws()}/repos/${enc(id)}`;
 
 /** Stream de mudanças nos repos (tempo real). Como no progresso dos jobs, o token vai na URL. */
 export const eventsUrl = () => `/api/events?t=${encodeURIComponent(BOOT.token ?? '')}`;
@@ -70,21 +96,26 @@ export function terminalSocketUrl(tid: string): string {
 export const api = {
   // app e workspaces
   app: () => call<AppInfo>('/app'),
-  openWorkspace: (path: string) => post<AppInfo>('/workspace/open', { path }),
-  closeWorkspace: () => post<AppInfo>('/workspace/close'),
+  // Abre em uma nova guia (ou ativa a que já existe para esse caminho).
+  openWorkspace: (path: string) => post<AppInfo>('/workspace/open', { path, mode: 'add' }),
+  // Operações sobre as guias em si: não são "de uma guia", então a guarda de troca não vale.
+  closeTab: (id: string) => post<AppInfo>(`/w/${enc(id)}/close`, {}, false),
+  setActiveTab: (id: string | null) => post<AppInfo>('/session/active', { id }, false),
+  reorderTabs: (ids: string[]) => post<AppInfo>('/session/order', { ids }, false),
   removeRecent: (path: string) => post<AppInfo>('/recents/remove', { path }),
   workspaceCommit: (repos: { id: string; stageAll: boolean }[], summary: string, body: string) =>
-    post<{ results: RepoResult[] }>('/workspace/commit', { repos, summary, body }),
+    post<{ results: RepoResult[] }>(`${ws()}/workspace/commit`, { repos, summary, body }),
   // branches em vários repos
-  workspaceBranches: () => call<RepoBranches[]>('/workspace/branches'),
+  workspaceBranches: () => call<RepoBranches[]>(`${ws()}/workspace/branches`),
   workspaceCreateBranch: (repos: { id: string; from?: string }[], name: string, checkout: boolean) =>
-    post<{ results: RepoResult[] }>('/workspace/branches/create', { repos, name, checkout }),
+    post<{ results: RepoResult[] }>(`${ws()}/workspace/branches/create`, { repos, name, checkout }),
   workspaceCheckout: (repos: { id: string; mode: 'carry' | 'stash'; create: boolean }[], name: string) =>
-    post<{ results: RepoResult[] }>('/workspace/branches/checkout', { repos, name }),
-  workspaceMergePreview: (repos: string[], branch: string) => post<RepoMergePreview[]>('/workspace/branches/merge-preview', { repos, branch }),
+    post<{ results: RepoResult[] }>(`${ws()}/workspace/branches/checkout`, { repos, name }),
+  workspaceMergePreview: (repos: string[], branch: string) =>
+    post<RepoMergePreview[]>(`${ws()}/workspace/branches/merge-preview`, { repos, branch }),
   workspaceMerge: (repos: string[], branch: string, noFastForward: boolean) =>
-    post<{ results: RepoResult[] }>('/workspace/branches/merge', { repos, branch, noFastForward }),
-  workspace: async (): Promise<WorkspaceSummary> => (IS_STATIC ? BOOT.data!.summary : call('/workspace')),
+    post<{ results: RepoResult[] }>(`${ws()}/workspace/branches/merge`, { repos, branch, noFastForward }),
+  workspace: async (): Promise<WorkspaceSummary> => (IS_STATIC ? BOOT.data!.summary : call(`${ws()}/workspace`)),
 
   // leitura
   graph: async (id: string, limit?: number): Promise<RepoGraph> =>

@@ -3,7 +3,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { desktop, IS_STATIC } from '../api.ts';
 import { openDialog } from '../actions.ts';
-import { closeWorkspace, openWorkspace, pickWorkspace, state } from '../store.ts';
+import { activateTab, closeWorkspace, openWorkspace, pickWorkspace, state } from '../store.ts';
 
 const open = ref(false);
 const root = ref<HTMLElement>();
@@ -44,9 +44,9 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocClick));
         <span>Abrir workspace…</span><kbd>Ctrl+O</kbd>
       </button>
       <button v-if="desktop" class="menu-item" @click="run(() => pickWorkspace('folder'))"><span>Abrir repositório ou pasta…</span></button>
-      <button class="menu-item" @click="run(() => (state.welcome = true))"><span>Tela inicial</span></button>
+      <button class="menu-item" @click="run(() => activateTab(null))"><span>Tela inicial</span></button>
       <div class="menu-sep" />
-      <button class="menu-item" @click="run(closeWorkspace)"><span>Fechar workspace</span></button>
+      <button class="menu-item" @click="run(closeWorkspace)"><span>Fechar guia</span><kbd>Ctrl+W</kbd></button>
     </div>
   </div>
 </template>
