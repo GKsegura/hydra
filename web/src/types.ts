@@ -57,6 +57,8 @@ export interface AppInfo {
   defaultDir: string;
   workspace: { name: string; file: string | null; source: string | null } | null;
   recents: Recent[];
+  /** Aviso a mostrar uma vez (ex.: não foi possível reabrir o último workspace). */
+  notice?: string | null;
 }
 
 /** Ponte exposta pelo preload do app desktop (Electron). */

@@ -318,6 +318,7 @@ if (!app.requestSingleInstanceLock()) {
       // Teto de commits por repo que o front pode pedir (?limit=). A carga inicial (250) e o "carregar mais" vêm do front.
       max: 20_000,
       desktop: true,
+      restore: true, // sem caminho na linha de comando, reabre o workspace da sessão anterior
       recentsFile: path.join(app.getPath('userData'), 'recents.json'),
       secrets: secretStore(),
       // Descartar alterações manda o arquivo para a Lixeira (dá pra recuperar), como no GitHub Desktop.

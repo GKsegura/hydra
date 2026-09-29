@@ -16,6 +16,7 @@ import { GitHubSession } from './github-session.ts';
 import { HttpError } from './http.ts';
 import { Jobs } from './jobs.ts';
 import { defaultRecentsFile, Recents } from './recents.ts';
+import { SessionStore } from './session-store.ts';
 import { appRoutes } from './routes/app.ts';
 import { repoRoutes } from './routes/repo.ts';
 import { terminalRoutes } from './routes/terminal.ts';
@@ -42,6 +43,10 @@ export interface ServerOptions {
   max: number;
   /** Onde guardar a lista de recentes (padrão: ~/.hydra/recents.json). */
   recentsFile?: string;
+  /** Onde guardar a sessão restaurável (padrão: session.json ao lado dos recentes). */
+  sessionFile?: string;
+  /** Sem caminho na linha de comando, reabre o workspace da sessão anterior (app desktop). */
+  restore?: boolean;
   /** Rodando dentro do app desktop (habilita o seletor nativo no front). */
   desktop?: boolean;
   /** Onde o token do GitHub fica guardado (desktop: safeStorage; CLI: variável de ambiente / gh). */
@@ -74,13 +79,38 @@ export class Session {
   ws: Workspace | null = null;
   private repos = new Map<string, Repo>();
   recents: Recents;
+  store: SessionStore;
+  /** Aviso pendente (ex.: não deu para reabrir o último workspace); entregue uma vez ao front. */
+  private notice: string | null = null;
   /** Chamado quando o workspace troca ou fecha (ex.: encerrar os terminais do workspace anterior). */
   onReset: (() => void) | null = null;
   /** Chamado depois que um workspace abre (ex.: começar a observar os repos dele). */
   onOpen: ((ws: Workspace) => void) | null = null;
 
-  constructor(recentsFile: string) {
+  constructor(recentsFile: string, sessionFile = path.join(path.dirname(recentsFile), 'session.json')) {
     this.recents = new Recents(recentsFile);
+    this.store = new SessionStore(sessionFile);
+  }
+
+  /** Reabre o workspace da sessão salva. Se não der (pasta sumiu, sem repos), fica na tela inicial e guarda um aviso. */
+  restore(): boolean {
+    const { tabs, activeTab } = this.store.read();
+    const source = tabs[activeTab]?.source;
+    if (!source) return false;
+    try {
+      this.open(source);
+      return true;
+    } catch (err) {
+      this.notice = `Não foi possível reabrir "${source}": ${(err as Error).message}`;
+      return false;
+    }
+  }
+
+  /** Entrega (uma vez) o aviso pendente. */
+  takeNotice(): string | null {
+    const n = this.notice;
+    this.notice = null;
+    return n;
   }
 
   /** Abre um workspace (arquivo, pasta ou repo). Lança erro legível se não houver repositórios. */
@@ -91,11 +121,13 @@ export class Session {
     this.ws = ws;
     this.repos = new Map(ws.repos.map((r) => [r.id, r]));
     this.recents.add({ path: ws.source ?? target, name: ws.name });
+    this.store.setSingle(ws.source ?? path.resolve(target));
     this.onOpen?.(ws);
     return ws;
   }
 
   close() {
+    this.store.clear();
     this.onReset?.();
     this.ws = null;
     this.repos.clear();
@@ -150,7 +182,7 @@ export function createApp(
   });
 
   api.get('/app', (_req, res) => {
-    res.json(appInfo());
+    res.json({ ...appInfo(), notice: session.takeNotice() });
   });
   api.post('/workspace/open', (req, res) => {
     const target = req.body?.path;
@@ -322,8 +354,9 @@ export interface RunningServer {
 /** Sobe o servidor. Sem `target`, o app abre na tela inicial. Porta 0 = qualquer livre. */
 export async function startServer(target: string | null, opts: ServerOptions): Promise<RunningServer> {
   const token = randomBytes(16).toString('hex');
-  const session = new Session(opts.recentsFile ?? defaultRecentsFile());
+  const session = new Session(opts.recentsFile ?? defaultRecentsFile(), opts.sessionFile);
   if (target) session.open(target);
+  else if (opts.restore) session.restore();
   const jobs = new Jobs();
   const github = new GitHubSession(opts.secrets ?? memoryStore());
   await github.init();

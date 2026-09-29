@@ -5,6 +5,7 @@ import type {
   AppInfo, BranchInfo, Commit, ConflictFile, GitHubInfo, OperationInfo, PullsInfo, RepoGraph, RepoStatus, Selection, TerminalInfo,
   WorkspaceSummary,
 } from './types.ts';
+import { layoutKeyFor, legacyLayoutKey } from './layout-key.ts';
 import { COLORS } from './utils.ts';
 
 interface DiffView {
@@ -125,7 +126,8 @@ export function matches(c: Commit, q: string): boolean {
 
 // ------------------------------------------------------------------ layout salvo (por workspace)
 
-const layoutKey = () => `hydra:${state.summary?.name}:layout`;
+// Chave pelo caminho do workspace (dois projetos com o mesmo nome não se misturam); a antiga, pelo nome, serve de reserva.
+const layoutKey = () => layoutKeyFor(state.app?.workspace?.source ?? null, state.summary?.name);
 
 export function saveLayout() {
   try {
@@ -141,7 +143,8 @@ function readLayout(): {
   visible?: string[]; sizes?: Record<string, number>; active?: string; timeline?: boolean; timelineOnly?: boolean;
 } | null {
   try {
-    return JSON.parse(localStorage.getItem(layoutKey()) || 'null');
+    const raw = localStorage.getItem(layoutKey()) ?? localStorage.getItem(legacyLayoutKey(state.summary?.name));
+    return JSON.parse(raw || 'null');
   } catch {
     return null;
   }
@@ -297,6 +300,7 @@ export async function refresh() {
   try {
     if (!IS_STATIC) {
       state.app = await api.app();
+      if (state.app.notice) toast(state.app.notice, 'error');
       if (!state.app.workspace) {
         state.summary = null;
         return;
