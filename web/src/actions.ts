@@ -491,6 +491,7 @@ export function commitMenu(id: string, commit: Commit): MenuItem[] {
     { separator: true, label: '' },
     { label: 'Reverter este commit…', run: () => revert(id, commit) },
     { label: 'Cherry-pick na branch atual', run: () => cherryPick(id, commit), disabled: isHead },
+    { label: 'Simular cherry-pick em um cenário…', run: () => openDialog('scenario', { commit: commit.hash, repoId: id }) },
     { label: 'Checkout deste commit (HEAD destacado)', run: () => checkoutCommit(id, commit.hash), disabled: isHead },
   ];
   if (isHead && !st?.detached) items.push({ label: 'Desfazer este commit…', run: () => undoLastCommit(id), hint: 'só se ainda não foi enviado' });

@@ -1,12 +1,14 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { simulateMany, type RepoScenario } from '../src/multi.ts';
 import { startServer } from '../src/server.ts';
 import type { Repo } from '../src/workspace.ts';
 import { cleanup, commitFile, makeRepo, sh, tmpDir } from './helpers.ts';
 
 afterAll(cleanup);
+// Montar 3 repositórios com várias branches são dezenas de chamadas ao git: no Windows isso passa dos 30 s padrão.
+vi.setConfig({ testTimeout: 180_000 });
 
 const editA = (repo: string, text: string) => commitFile(repo, 'a.txt', `linha 1\n${text}\nlinha 3\n`, `muda para ${text}`);
 const asRepo = (id: string, dir: string): Repo => ({ id, name: id.toUpperCase(), path: dir });
@@ -95,6 +97,37 @@ describe('simulateMany (cenário em vários repositórios)', () => {
     expect(r[0].steps[0]).toMatchObject({ ref: 'origin/feature/a', state: 'ok' });
   });
 
+  it('cherry-pick de um commit (hash) só existe no repo de onde ele veio; nos outros o passo fica "missing"', async () => {
+    const repos = threeRepos();
+    const appCommit = sh(repos[1].path, 'rev-parse', 'feature/a').trim(); // commit que só o app tem
+    const r = await simulateMany(repos, 'main', [{ op: 'cherry-pick', commit: appCommit }]);
+    expect(byId(r, 'app').steps[0]).toMatchObject({ op: 'cherry-pick', commit: appCommit, state: 'ok', commits: 1 });
+    expect(byId(r, 'api').steps[0]).toMatchObject({ state: 'missing', ref: null, commit: appCommit });
+    expect(byId(r, 'bot').steps[0].state).toBe('missing');
+  });
+
+  it('cherry-pick por nome de branch pega a ponta dela em cada repo; rebase reaplica a base sobre a branch', async () => {
+    const repos = threeRepos();
+    const pick = await simulateMany(repos, 'main', [{ op: 'cherry-pick', commit: 'feature/b' }]);
+    expect(pick.map((x) => x.steps[0].state)).toEqual(['ok', 'ok', 'ok']);
+
+    // base = feature/a, reaplicada sobre a main: o commit da feature entra limpo
+    const rebase = await simulateMany([repos[1]], 'feature/a', [{ op: 'rebase', branch: 'main' }]);
+    expect(rebase[0].steps[0]).toMatchObject({ op: 'rebase', branch: 'main', state: 'ok', commits: 1 });
+  });
+
+  it('conflito ou erro de um passo novo para a cadeia e preenche stoppedAt', async () => {
+    const [api] = threeRepos();
+    const b = sh(api.path, 'rev-parse', 'feature/b').trim();
+    const r = await simulateMany([api], 'main', [
+      { op: 'merge', branch: 'feature/a' },
+      { op: 'cherry-pick', commit: b }, // conflita com o merge do passo 1
+      { op: 'rebase', branch: 'feature/a' }, // skipped
+    ]);
+    expect(r[0].steps.map((s) => s.state)).toEqual(['ok', 'conflict', 'skipped']);
+    expect(r[0].stoppedAt).toBe(1);
+  });
+
   it('não muda nada nos repositórios (refs, HEAD, árvore de trabalho)', async () => {
     const repos = threeRepos();
     const snap = () => repos.map((r) => sh(r.path, 'for-each-ref') + sh(r.path, 'rev-parse', 'HEAD') + sh(r.path, 'status', '--porcelain'));
@@ -135,7 +168,10 @@ describe('POST /w/:wid/workspace/scenario/simulate', () => {
       const bad = async (b: unknown) => (await call(b)).status;
       expect(await bad({ repos: ids, steps: [{ op: 'merge', branch: 'x' }] })).toBe(400); // sem base
       expect(await bad({ repos: ids, base: 'main', steps: [] })).toBe(400); // sem passos
-      expect(await bad({ repos: ids, base: 'main', steps: [{ op: 'rebase', branch: 'x' }] })).toBe(400); // passo desconhecido
+      expect(await bad({ repos: ids, base: 'main', steps: [{ op: 'squash', branch: 'x' }] })).toBe(400); // passo desconhecido
+      expect(await bad({ repos: ids, base: 'main', steps: [{ op: 'cherry-pick' }] })).toBe(400); // cherry-pick sem commit
+      expect(await bad({ repos: ids, base: 'main', steps: [{ op: 'cherry-pick', commit: '--upload-pack=x' }] })).toBe(400);
+      expect(await bad({ repos: ids, base: 'main', steps: [{ op: 'rebase' }] })).toBe(400); // rebase sem branch
       expect(await bad({ repos: ids, base: 'main', steps: [{ op: 'merge' }] })).toBe(400); // sem branch
       expect(await bad({ repos: [], base: 'main', steps: [{ op: 'merge', branch: 'x' }] })).toBe(400); // sem repos
       expect(await bad({ repos: ['nao-existe'], base: 'main', steps: [{ op: 'merge', branch: 'x' }] })).toBe(404);

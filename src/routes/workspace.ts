@@ -1,7 +1,7 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 import express from 'express';
 import { HttpError, str } from '../http.ts';
-import { branchOverview, checkoutMany, commitMany, createMany, mergeMany, previewMany, simulateMany } from '../multi.ts';
+import { branchOverview, checkoutMany, commitMany, createMany, mergeMany, previewMany, simulateMany, type ScenarioStepInput } from '../multi.ts';
 import type { Repo } from '../workspace.ts';
 import type { WorkspaceScope } from '../workspace-session.ts';
 
@@ -65,9 +65,14 @@ export function workspaceRoutes(ctx: { session: WorkspaceScope }) {
     const list: unknown = req.body?.steps;
     if (!Array.isArray(list) || !list.length) throw new HttpError(400, 'Informe pelo menos um passo');
     if (list.length > MAX_SCENARIO_STEPS) throw new HttpError(400, `No máximo ${MAX_SCENARIO_STEPS} passos por cenário`);
-    const steps = list.map((s: { op?: unknown; branch?: unknown }) => {
-      if (s?.op !== 'merge') throw new HttpError(400, 'Por enquanto só existe o passo "merge"');
-      return { op: 'merge' as const, branch: str(s.branch, 'a branch do passo').trim() };
+    const steps = list.map((s: { op?: unknown; branch?: unknown; commit?: unknown }): ScenarioStepInput => {
+      if (s?.op === 'cherry-pick') {
+        const commit = str(s.commit, 'o commit do passo').trim();
+        if (commit.startsWith('-')) throw new HttpError(400, 'Commit inválido');
+        return { op: 'cherry-pick', commit };
+      }
+      if (s?.op !== 'merge' && s?.op !== 'rebase') throw new HttpError(400, 'Passo desconhecido: use "merge", "cherry-pick" ou "rebase"');
+      return { op: s.op, branch: str(s.branch, 'a branch do passo').trim() };
     });
     res.json(await simulateMany(reposOf(req.body?.repos), base, steps));
   });

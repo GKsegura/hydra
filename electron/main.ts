@@ -203,7 +203,7 @@ function buildMenu() {
         { label: 'Guardar alterações (stash)', click: () => menuAction('stash') },
         { label: 'Commit no workspace…', accelerator: 'CmdOrCtrl+Shift+Enter', registerAccelerator: false, click: () => menuAction('workspace-commit') },
         { label: 'Branch no workspace…', click: () => menuAction('workspace-branch') },
-        { label: 'Cenário: simular merges…', accelerator: 'CmdOrCtrl+Shift+M', registerAccelerator: false, click: () => menuAction('scenario') },
+        { label: 'Cenário: simular operações…', accelerator: 'CmdOrCtrl+Shift+M', registerAccelerator: false, click: () => menuAction('scenario') },
         { type: 'separator' },
         { label: 'Abrir no VS Code', click: () => menuAction('open-editor') },
         { label: 'Mostrar no Explorer', click: () => menuAction('open-explorer') },

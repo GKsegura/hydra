@@ -1,7 +1,7 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 // Operações em vários repositórios do workspace de uma vez. Cada repo é independente: um que falha não desfaz os outros.
 import {
-  checkoutBranch, commit, createBranch, getStatus, listBranches, mergeBranch, previewMerge, simulateChain, stage,
+  checkoutBranch, commit, createBranch, getStatus, gitOrNull, listBranches, mergeBranch, previewMerge, simulateChain, stage,
   type CheckoutMode, type MergePreview, type Operation,
 } from './git/index.ts';
 import type { Repo } from './workspace.ts';
@@ -216,26 +216,33 @@ export async function mergeMany(repos: Repo[], branch: string, noFastForward: bo
 
 // ------------------------------------------------------------------ cenários (simulação, sem efeito nenhum nos repos)
 
-export interface ScenarioStepInput {
-  op: 'merge';
-  /** O nome da branch (o mesmo em todos os repos; em cada um vale a local ou, senão, a remota equivalente). */
-  branch: string;
-}
+/**
+ * Um passo pedido. `merge`: a branch entra na base · `rebase`: a base é reaplicada sobre a branch · `cherry-pick`: o commit
+ * (hash, ou branch para pegar a ponta dela) é aplicado sobre a base. Um hash só existe no repo de onde veio: nos outros o
+ * passo fica `missing`.
+ */
+export type ScenarioStepInput = { op: 'merge' | 'rebase'; branch: string } | { op: 'cherry-pick'; commit: string };
 
 export interface RepoScenarioStep {
-  op: 'merge';
-  branch: string;
-  /** A ref usada neste repo, ou null se a branch não existe aqui. */
+  op: 'merge' | 'rebase' | 'cherry-pick';
+  /** merge e rebase: o nome da branch pedida. */
+  branch?: string;
+  /** cherry-pick: o commit (ou branch) pedido. */
+  commit?: string;
+  /** A ref usada neste repo, ou null se o que foi pedido não existe aqui. */
   ref: string | null;
   /**
-   * `ok`: entraria sem conflito · `conflict`: daria conflito (a cadeia deste repo para) · `skipped`: não calculado por causa de um
-   * conflito anterior · `missing`: a branch não existe neste repositório (o passo não faz nada aqui e a cadeia segue).
+   * `ok`: entraria sem conflito · `conflict`: daria conflito (a cadeia deste repo para) · `error`: não dá para simular
+   * (ver `note`; a cadeia para) · `skipped`: não calculado por causa de um passo anterior que parou a cadeia ·
+   * `missing`: a branch/commit não existe neste repositório (o passo não faz nada aqui e a cadeia segue).
    */
-  state: 'ok' | 'conflict' | 'skipped' | 'missing';
+  state: 'ok' | 'conflict' | 'error' | 'skipped' | 'missing';
   commits: number;
   fastForward: boolean;
   upToDate: boolean;
   conflicts: string[];
+  /** Detalhe: em qual commit o rebase conflitou, ou por que o passo não pôde ser simulado. */
+  note: string | null;
 }
 
 export interface RepoScenario {
@@ -246,7 +253,7 @@ export interface RepoScenario {
   /** Por que o repo ficou de fora (base inexistente, erro do git…). */
   reason: string | null;
   steps: RepoScenarioStep[];
-  /** Índice (na lista de passos pedida) do primeiro passo que conflitou, ou null. */
+  /** Índice (na lista de passos pedida) do primeiro passo que parou a cadeia (conflito ou erro), ou null. */
   stoppedAt: number | null;
 }
 
@@ -261,8 +268,24 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
   return out;
 }
 
+/** O que foi pedido no passo, na forma como aparece no resultado. */
+const named = (s: ScenarioStepInput) => (s.op === 'cherry-pick' ? { op: s.op, commit: s.commit } : { op: s.op, branch: s.branch });
+
 /**
- * Simula o mesmo cenário (base + passos de merge) em cada repo, sem tocar em nada: sem checkout, sem mexer na área de
+ * A ref deste repo para o que o passo pede: a branch (local, senão remota) e, no cherry-pick, também um commit pelo hash.
+ * Devolve null se não existe aqui.
+ */
+async function resolveStep(repo: Repo, info: RepoBranches, s: ScenarioStepInput): Promise<string | null> {
+  if (s.op !== 'cherry-pick') return resolveBranch(info, s.branch)?.ref ?? null;
+  const byBranch = resolveBranch(info, s.commit);
+  if (byBranch) return byBranch.ref;
+  if (!/^[0-9a-f]{7,40}$/i.test(s.commit)) return null;
+  const found = await gitOrNull(repo.path, ['rev-parse', '--verify', '-q', `${s.commit}^{commit}`]);
+  return found ? found.trim() : null;
+}
+
+/**
+ * Simula o mesmo cenário (base + passos) em cada repo, sem tocar em nada: sem checkout, sem mexer na área de
  * trabalho, em refs ou em objetos. Cada repo é independente: a base ou uma branch que falta só afeta aquele repo.
  */
 export async function simulateMany(repos: Repo[], base: string, steps: ScenarioStepInput[]): Promise<RepoScenario[]> {
@@ -273,18 +296,18 @@ export async function simulateMany(repos: Repo[], base: string, steps: ScenarioS
       const baseTarget = resolveBranch(info, base);
       if (!baseTarget) return { ...head, baseRef: null, reason: 'A branch base não existe nesse repositório.', steps: [], stoppedAt: null };
 
-      // Só os passos cuja branch existe aqui vão para o motor; os outros ficam como "missing" e a cadeia segue.
-      const targets = steps.map((s) => resolveBranch(info, s.branch));
-      const chain = await simulateChain(repo.path, baseTarget.ref, steps.flatMap((s, i) => (targets[i] ? [{ op: s.op, ref: targets[i]!.ref }] : [])));
+      // Só os passos cuja branch/commit existe aqui vão para o motor; os outros ficam como "missing" e a cadeia segue.
+      const targets = await Promise.all(steps.map((s) => resolveStep(repo, info, s)));
+      const chain = await simulateChain(repo.path, baseTarget.ref, steps.flatMap((s, i) => (targets[i] ? [{ op: s.op, ref: targets[i]! }] : [])));
 
       let k = 0;
       let stoppedAt: number | null = null;
       const out = steps.map((s, i): RepoScenarioStep => {
-        const target = targets[i];
-        if (!target) return { op: s.op, branch: s.branch, ref: null, state: 'missing', commits: 0, fastForward: false, upToDate: false, conflicts: [] };
+        const ref = targets[i];
+        if (!ref) return { ...named(s), ref: null, state: 'missing', commits: 0, fastForward: false, upToDate: false, conflicts: [], note: null };
         const r = chain.steps[k++];
-        if (r.state === 'conflict' && stoppedAt === null) stoppedAt = i;
-        return { op: s.op, branch: s.branch, ref: target.ref, state: r.state, commits: r.commits, fastForward: r.fastForward, upToDate: r.upToDate, conflicts: r.conflicts };
+        if ((r.state === 'conflict' || r.state === 'error') && stoppedAt === null) stoppedAt = i;
+        return { ...named(s), ref, state: r.state, commits: r.commits, fastForward: r.fastForward, upToDate: r.upToDate, conflicts: r.conflicts, note: r.note };
       });
       return { ...head, baseRef: baseTarget.ref, reason: null, steps: out, stoppedAt };
     } catch (err) {
