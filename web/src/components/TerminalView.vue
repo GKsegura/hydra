@@ -2,12 +2,15 @@
 <script setup lang="ts">
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { terminalSocketUrl } from '../api.ts';
-import { state, toast, type TerminalTab } from '../store.ts';
+import { repoColor, state, toast, type TerminalTab } from '../store.ts';
 import { closeTerminal, tabTitle } from '../terminal.ts';
 
-const props = defineProps<{ tab: TerminalTab; active: boolean }>();
+// `visible`: está na tela (ajusta o tamanho); `focused`: recebe o teclado. Com o dock dividido, dois estão visíveis e um focado.
+const props = defineProps<{ tab: TerminalTab; visible: boolean; focused: boolean; index: number }>();
+const emit = defineEmits<{ focus: [] }>();
+const split = computed(() => state.terminal.split);
 
 const box = ref<HTMLElement>();
 const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -93,7 +96,7 @@ term.attachCustomKeyEventHandler((ev) => {
 
 function refit() {
   const el = box.value;
-  if (!el || !props.active || !el.clientWidth || !el.clientHeight) return;
+  if (!el || !props.visible || !el.clientWidth || !el.clientHeight) return;
   try {
     fit.fit();
   } catch {
@@ -108,15 +111,24 @@ onMounted(() => {
   connect();
   observer = new ResizeObserver(() => refit());
   observer.observe(box.value!);
-  if (props.active) term.focus();
+  if (props.focused) term.focus();
 });
 
+// Apareceu na tela (dock aberto, painel novo, divisão desfeita): ajusta o tamanho. O foco vai só para o painel em foco.
 watch(
-  () => [props.active, state.terminal.open],
-  async ([active, open]) => {
-    if (!active || !open) return;
+  () => [props.visible, state.terminal.open, split.value, state.terminal.ratio],
+  async ([visible, open]) => {
+    if (!visible || !open) return;
     await nextTick();
     refit();
+    if (props.focused) term.focus();
+  },
+);
+watch(
+  () => props.focused,
+  async (focused) => {
+    if (!focused || !state.terminal.open) return;
+    await nextTick();
     term.focus();
   },
 );
@@ -133,5 +145,19 @@ defineExpose({ focus: () => term.focus() });
 </script>
 
 <template>
-  <div v-show="active" ref="box" class="term-view" />
+  <!-- Cada terminal é uma célula do grid do dock: a posição vem da ordem em `panes`; fora dela fica escondido (mas vivo). -->
+  <div
+    v-show="visible"
+    class="term-pane"
+    :class="{ focused: focused && !!split, headed: !!split }"
+    :style="split === 'rows' ? { gridRow: index + 1 } : { gridColumn: index + 1 }"
+    @pointerdown.capture="emit('focus')"
+  >
+    <div v-if="split" class="term-pane-head">
+      <span class="repo-dot" :style="{ '--c': repoColor(tab.repoId) }" />
+      <span class="name">{{ tabTitle(tab.repoId) }}</span>
+      <span class="x" title="Fechar terminal" @click.stop="closeTerminal(tab.id)">✕</span>
+    </div>
+    <div ref="box" class="term-view" />
+  </div>
 </template>

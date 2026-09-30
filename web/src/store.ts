@@ -7,6 +7,7 @@ import type {
 } from './types.ts';
 import { layoutKeyFor, legacyLayoutKey } from './layout-key.ts';
 import { INACTIVE_MS, unloadIdleTabs, type ParkedTab } from './tabs.ts';
+import { DEFAULT_RATIO, emptyLayout, normalize, type SplitDirection, type TermLayout } from './terminal-layout.ts';
 import { COLORS } from './utils.ts';
 
 interface DiffView {
@@ -57,9 +58,29 @@ export const state = reactive({
     open: false,
     height: 280,
     tabs: [] as TerminalTab[], // um shell por aba, sempre na pasta de um repo do workspace
-    active: null as string | null,
+    active: null as string | null, // o terminal em foco (sempre um dos `panes`)
+    split: null as SplitDirection | null, // dock dividido: lado a lado (columns) ou empilhado (rows)
+    panes: [] as string[], // terminais à vista, na ordem
+    ratio: 0.5, // fração do primeiro pane
   },
 });
+
+/** O layout do dock de terminais como o modelo puro (terminal-layout.ts) o entende. */
+export const termLayout = (): TermLayout => ({
+  tabs: state.terminal.tabs.map((t) => t.id),
+  active: state.terminal.active,
+  split: state.terminal.split,
+  panes: state.terminal.panes,
+  ratio: state.terminal.ratio,
+});
+
+/** Grava no estado o que o modelo devolveu (a lista de abas em si é mexida por quem abre/fecha o terminal). */
+export function applyTermLayout(l: TermLayout) {
+  state.terminal.active = l.active;
+  state.terminal.split = l.split;
+  state.terminal.panes = l.panes;
+  state.terminal.ratio = l.ratio;
+}
 
 export interface TerminalTab {
   id: string;
@@ -376,7 +397,9 @@ const TAB_KEYS = [
 interface TabValues {
   fields: Pick<typeof state, (typeof TAB_KEYS)[number]>;
   terminalTabs: TerminalTab[];
-  terminalActive: string | null;
+  terminalLayout: TermLayout;
+  /** O dock de terminais estava aberto nesta guia (cada guia lembra o seu). */
+  terminalOpen: boolean;
 }
 
 /** Valores de uma guia recém-aberta (ou do Início). */
@@ -388,7 +411,8 @@ function emptyTab(): TabValues {
       conflict: null, amend: {}, pulls: {}, jobs: {},
     },
     terminalTabs: [],
-    terminalActive: null,
+    terminalLayout: emptyLayout(),
+    terminalOpen: false,
   };
 }
 
@@ -412,14 +436,17 @@ function startSweeper() {
 function readTab(): TabValues {
   const fields = {} as Record<string, unknown>;
   for (const k of TAB_KEYS) fields[k] = state[k];
-  return { fields: fields as TabValues['fields'], terminalTabs: state.terminal.tabs, terminalActive: state.terminal.active };
+  return {
+    fields: fields as TabValues['fields'], terminalTabs: state.terminal.tabs, terminalLayout: termLayout(), terminalOpen: state.terminal.open,
+  };
 }
 
 function writeTab(v: TabValues) {
   const target = state as Record<string, unknown>;
   for (const k of TAB_KEYS) target[k] = v.fields[k];
   state.terminal.tabs = v.terminalTabs;
-  state.terminal.active = v.terminalActive;
+  applyTermLayout(normalize(v.terminalLayout, v.terminalTabs.map((t) => t.id)));
+  state.terminal.open = v.terminalOpen && v.terminalTabs.length > 0;
   state.dialog = null; // diálogos e menus se referem a repos da guia anterior
   state.menu = null;
 }
@@ -453,7 +480,15 @@ function switchTo(id: string | null, save = true): boolean {
 // preferências leves da guia (qual estava em foco e se o dock estava aberto), por id da guia.
 const termPrefsKey = (wid: string) => `hydra:terminal-tab:${wid}`;
 
-function readTermPrefs(wid: string): { active?: string | null; open?: boolean } {
+interface TermPrefs {
+  active?: string | null;
+  open?: boolean;
+  split?: SplitDirection | null;
+  panes?: string[];
+  ratio?: number;
+}
+
+function readTermPrefs(wid: string): TermPrefs {
   try {
     return JSON.parse(sessionStorage.getItem(termPrefsKey(wid)) || 'null') ?? {};
   } catch {
@@ -463,11 +498,16 @@ function readTermPrefs(wid: string): { active?: string | null; open?: boolean } 
 
 watch(
   // Uma string (e não um array novo a cada leitura): só dispara quando algo mudou de fato, não a cada troca de guia.
-  () => `${state.terminal.tabs.map((t) => t.id).join()}|${state.terminal.active}|${state.terminal.open}`,
+  () => {
+    const t = state.terminal;
+    return `${t.tabs.map((x) => x.id).join()}|${t.active}|${t.open}|${t.split}|${t.panes.join()}|${t.ratio}`;
+  },
   () => {
     if (!currentWid) return;
     try {
-      sessionStorage.setItem(termPrefsKey(currentWid), JSON.stringify({ active: state.terminal.active, open: state.terminal.open }));
+      const t = state.terminal;
+      const prefs: TermPrefs = { active: t.active, open: t.open, split: t.split, panes: t.panes, ratio: t.ratio };
+      sessionStorage.setItem(termPrefsKey(currentWid), JSON.stringify(prefs));
     } catch {
       /* storage bloqueado: só não lembramos */
     }
@@ -481,10 +521,13 @@ async function loadTerminals() {
     const wid = currentWid;
     const list = await api.terminals();
     const prefs = readTermPrefs(wid);
-    const known = new Set(list.map((t) => t.id));
-    const active = [state.terminal.active, prefs.active].find((id): id is string => !!id && known.has(id)) ?? list.at(-1)?.id ?? null;
+    // O layout em memória (troca de guia, recarga de dados) vale mais que o guardado; sem ele, o das preferências (F5).
+    const inMemory = state.terminal.tabs.length > 0;
+    const base: TermLayout = inMemory
+      ? termLayout()
+      : { tabs: [], active: prefs.active ?? null, split: prefs.split ?? null, panes: prefs.panes ?? [], ratio: prefs.ratio ?? DEFAULT_RATIO };
     state.terminal.tabs = list;
-    state.terminal.active = active;
+    applyTermLayout(normalize({ ...base, tabs: list.map((t) => t.id) }, list.map((t) => t.id)));
     if (!state.terminal.tabs.length) state.terminal.open = false;
     else if (prefs.open !== undefined && !state.terminal.open) state.terminal.open = prefs.open;
   } catch {
