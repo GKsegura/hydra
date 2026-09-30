@@ -459,6 +459,9 @@ function localHost(host: string | undefined): boolean {
 function attachTerminalSockets(server: Server, token: string, terminals: Terminals) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
   server.on('upgrade', (req, socket, head) => {
+    // Depois do 'upgrade' o Node solta o socket: se o navegador cortar a conexão (F5, fechar a janela) e ninguém escutar o
+    // 'error', o processo inteiro cai com ECONNRESET.
+    socket.on('error', () => socket.destroy());
     const url = new URL(req.url ?? '/', 'http://127.0.0.1');
     const id = /^\/api\/terminals\/([0-9a-f]{16})\/ws$/.exec(url.pathname)?.[1];
     const origin = req.headers.origin ?? '';
@@ -475,6 +478,7 @@ function attachTerminalSockets(server: Server, token: string, terminals: Termina
         },
         close: (code, reason) => ws.close(code, reason),
       });
+      ws.on('error', () => ws.terminate()); // conexão cortada pelo outro lado: o 'close' faz a limpeza
       if (!link) return void ws.close(4004, 'Terminal encerrado');
       ws.on('message', (data) => link.message(data.toString()));
       ws.on('close', link.detach);

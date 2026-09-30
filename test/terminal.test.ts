@@ -1,5 +1,6 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 import { existsSync } from 'node:fs';
+import net from 'node:net';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
@@ -116,6 +117,50 @@ describe.skipIf(!available)('Terminal em workspace que não é o ativo', () => {
       expect(srv.terminals.has(tb)).toBe(true);
       expect((await list(wb)).map((t) => t.id)).toEqual([tb]);
     } finally {
+      srv.server.close();
+    }
+  });
+});
+
+describe.skipIf(!available)('Conexão do terminal cortada', () => {
+  it('o navegador cortar o WebSocket (F5, fechar a janela) não derruba o servidor', async () => {
+    const dir = tmpDir();
+    const srv = await startServer(makeRepo(), { port: 0, max: 10, recentsFile: path.join(dir, 'recents.json'), sessionFile: path.join(dir, 'session.json') });
+    try {
+      const wid = srv.session.active!.id;
+      const host = `127.0.0.1:${srv.port}`;
+      const res = await fetch(`http://${host}/api/w/${wid}/repos/${srv.session.active!.ws.repos[0].id}/terminals`, {
+        method: 'POST',
+        headers: { 'x-hydra-token': srv.token, 'content-type': 'application/json' },
+        body: JSON.stringify({ cols: 80, rows: 24 }),
+      });
+      const { id } = (await res.json()) as { id: string };
+      for (let i = 0; i < 15; i++) {
+        const socket = net.connect(srv.port, '127.0.0.1');
+        await new Promise<void>((resolve) => socket.once('connect', resolve));
+        socket.write(
+          `GET /api/terminals/${id}/ws?t=${srv.token} HTTP/1.1\r\nHost: ${host}\r\nOrigin: http://${host}\r\n`
+          + 'Connection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n',
+        );
+        await new Promise((r) => setTimeout(r, i % 3 === 0 ? 0 : 40)); // ora antes, ora depois do handshake
+        socket.resetAndDestroy(); // RST, como o navegador ao recarregar
+      }
+      // Terminal que não existe (mais): o servidor responde 404 e encerra; o navegador então corta a conexão.
+      for (let i = 0; i < 10; i++) {
+        const socket = net.connect(srv.port, '127.0.0.1');
+        await new Promise<void>((resolve) => socket.once('connect', resolve));
+        socket.write(
+          `GET /api/terminals/0123456789abcdef/ws?t=${srv.token} HTTP/1.1\r\nHost: ${host}\r\nOrigin: http://${host}\r\n`
+          + 'Connection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n',
+        );
+        await new Promise<void>((resolve) => socket.once('data', () => resolve())); // já veio o 404
+        socket.resetAndDestroy();
+      }
+      await new Promise((r) => setTimeout(r, 400));
+      const app = await fetch(`http://${host}/api/app`, { headers: { 'x-hydra-token': srv.token } });
+      expect(app.status).toBe(200); // o servidor segue de pé
+    } finally {
+      srv.terminals.killAll();
       srv.server.close();
     }
   });
