@@ -13,6 +13,7 @@ import GitHubDialog from './GitHubDialog.vue';
 import MergeDialog from './MergeDialog.vue';
 import PublishDialog from './PublishDialog.vue';
 import RenameBranchDialog from './RenameBranchDialog.vue';
+import ScenarioDialog from './ScenarioDialog.vue';
 import StashDialog from './StashDialog.vue';
 import WorkspaceBranchDialog from './WorkspaceBranchDialog.vue';
 import WorkspaceCommitDialog from './WorkspaceCommitDialog.vue';
@@ -33,6 +34,7 @@ const DIALOGS: Record<string, Component> = {
   stash: StashDialog,
   'workspace-commit': WorkspaceCommitDialog,
   'workspace-branch': WorkspaceBranchDialog,
+  scenario: ScenarioDialog,
 };
 </script>
 

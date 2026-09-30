@@ -63,6 +63,7 @@ function runAction(action: string) {
     case 'term-focus-other': return focusOtherPane();
     case 'workspace-commit': return state.summary ? openDialog('workspace-commit') : undefined;
     case 'workspace-branch': return state.summary ? openDialog('workspace-branch') : undefined;
+    case 'scenario': return state.summary ? openDialog('scenario') : undefined;
     case 'open-github': return needsRepo(openOnGitHub);
   }
 }
@@ -108,7 +109,7 @@ function onKey(ev: KeyboardEvent) {
   if ((ev.target as HTMLElement).closest?.('.xterm')) return;
   if (ctrl && !IS_STATIC) {
     const shortcut =
-      ev.shiftKey && key === 'o' ? 'clone' : ev.shiftKey && key === 'n' ? 'new-branch' : ev.shiftKey && key === 'p' ? 'push'
+      ev.shiftKey && key === 'o' ? 'clone' : ev.shiftKey && key === 'n' ? 'new-branch' : ev.shiftKey && key === 'm' ? 'scenario' : ev.shiftKey && key === 'p' ? 'push'
         : ev.shiftKey && key === 'l' ? 'pull' : !ev.shiftKey && key === 'o' ? 'open-file'
           // Ctrl+N só no app: no navegador ele abre outra janela e não dá para interceptar.
           : !ev.shiftKey && key === 'n' && desktop ? 'init' : null;

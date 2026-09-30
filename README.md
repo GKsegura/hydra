@@ -87,6 +87,7 @@ O Hydra foi pensado para:
 - **Botão de sync inteligente** por repo: `Fetch`, `Pull ↓2`, `Push ↑1`, `Publicar branch` ou `Publicar` (repo sem remoto), com progresso em tempo real.
 - **Pull Requests**: lista dos PRs abertos do repo e **Criar Pull Request** da branch atual, que abre no GitHub.
 - **Branch no workspace**: **criar, trocar e mergear a mesma branch em vários repositórios** de uma vez (ex.: a `feature/docker-instalacao` nos quatro repos do CRONOS). O Hydra mostra antes, repo por repo, o que vai acontecer: onde a branch já existe, onde só está no remoto, quem tem alterações pendentes e quem vai dar conflito no merge. Na barra lateral, um marcador **×3** indica as branches que existem em vários repos.
+- **Cenário (simular merges)**: antes de mergear, pergunte *"e se a `develop` recebesse a `feature/login` e depois a `feature/payments`?"* nos vários repositórios de uma vez. Você escolhe a **base**, os **passos** (branches que entram, em ordem) e os repos; o Hydra mostra, por repo, quantos commits entram, se é fast-forward ou precisa de commit de merge, e **quais arquivos dariam conflito** (inclusive conflitos que só aparecem por causa de um passo anterior). É só uma previsão: **nada é alterado** nos repositórios (sem checkout, sem mexer nos arquivos, sem criar branches). Abra por **Cenário…** na barra lateral, pelo menu *Repositório → Cenário: simular merges…* ou com `Ctrl+Shift+M`.
 
 ### Merge e conflitos
 - **Merge de qualquer branch na atual**, com **prévia antes de começar**: quantos commits entram, se é fast-forward e **quais arquivos vão dar conflito**.
@@ -137,6 +138,7 @@ O Hydra foi pensado para:
 | `↑` / `↓` | navegar pelos commits do repo em foco |
 | `Ctrl+Enter` | commitar (no formulário de commit) |
 | `Ctrl+Shift+Enter` | commit no workspace (a mesma mensagem em vários repos) |
+| `Ctrl+Shift+M` | cenário: simular uma sequência de merges em vários repos (só previsão) |
 | `` Ctrl+` `` | mostrar/esconder o terminal integrado (abre um no repo em foco se não houver) |
 | `Ctrl+\` | terminal: dividir lado a lado com um terminal novo no repo em foco (de novo, desfaz a divisão) |
 | `Ctrl+Shift+\` | terminal: dividir empilhado (de novo, desfaz) |
@@ -846,6 +848,7 @@ Todas as rotas exigem o header `x-hydra-token` (os streams de eventos aceitam `?
 | Grupo | Rotas principais |
 |---|---|
 | App e workspaces | `GET /api/app` · `POST /api/workspace/open` · `POST /api/workspace/close` · `POST /api/recents/remove` · `GET /api/workspace` · `POST /api/workspace/commit` (`{ repos: [{ id, stageAll }], summary, body }` → relatório por repo) |
+| Cenário (simulação de merges, só leitura) | `POST /api/w/:wid/workspace/scenario/simulate` com `{ repos, base, steps: [{ op: "merge", branch }] }`; devolve, por repo, a ref da base, os passos (`ok`, `conflict`, `skipped`, `missing`) e o passo em que parou |
 | Branches no workspace | `GET /api/workspace/branches` · `POST /api/workspace/branches/{create,checkout,merge-preview,merge}` (cada um com a lista de repos e devolvendo um relatório por repo) |
 | Leitura do repo | `GET /api/repos/:id/{graph,status,branches,remotes,operation,pulls,last-commit}` · `GET …/commit/:hash` · `GET …/commit/:hash/diff?file=` · `GET …/diff?file=&staged=` |
 | Commits | `POST …/{stage,unstage,commit,amend,undo,revert,cherry-pick,discard}` · `POST …/{stage-lines,unstage-lines}` (stage parcial: `{ file, lines, expected }`) |

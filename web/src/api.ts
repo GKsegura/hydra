@@ -1,7 +1,8 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 import type {
   AppInfo, Boot, BranchInfo, CommitDetail, ConflictFile, GitHubInfo, GitHubRepo, JobEvent, MergePreview, MergeResult,
-  OperationInfo, Progress, PullsInfo, RepoBranches, RepoGraph, RepoMergePreview, RepoResult, RepoStatus, TerminalInfo, WorkspaceSummary,
+  OperationInfo, Progress, PullsInfo, RepoBranches, RepoGraph, RepoMergePreview, RepoResult, RepoScenario, RepoStatus, ScenarioStepInput,
+  TerminalInfo, WorkspaceSummary,
 } from './types.ts';
 
 // No modo servidor o hydra injeta o token no HTML; no `npm run dev` (Vite) ele vem por ?t= na URL.
@@ -115,6 +116,9 @@ export const api = {
     post<RepoMergePreview[]>(`${ws()}/workspace/branches/merge-preview`, { repos, branch }),
   workspaceMerge: (repos: string[], branch: string, noFastForward: boolean) =>
     post<{ results: RepoResult[] }>(`${ws()}/workspace/branches/merge`, { repos, branch, noFastForward }),
+  // cenário: só simula (não altera nenhum repositório)
+  workspaceScenario: (repos: string[], base: string, steps: ScenarioStepInput[]) =>
+    post<RepoScenario[]>(`${ws()}/workspace/scenario/simulate`, { repos, base, steps }),
   workspace: async (): Promise<WorkspaceSummary> => (IS_STATIC ? BOOT.data!.summary : call(`${ws()}/workspace`)),
 
   // leitura

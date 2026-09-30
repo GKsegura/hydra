@@ -116,6 +116,9 @@ function stashMenu(ev: MouseEvent, index: number) {
           <button class="btn sm" title="Criar, trocar ou mergear a mesma branch em vários repositórios" @click="openDialog('workspace-branch')">
             Branch…
           </button>
+          <button class="btn sm" title="Simular uma sequência de merges em vários repositórios, sem alterar nada (Ctrl+Shift+M)" @click="openDialog('scenario')">
+            Cenário…
+          </button>
         </div>
         <label class="side-item side-flag" title="Um painel extra com os commits de todos os repositórios visíveis, por data">
           <input type="checkbox" :checked="state.timeline" @change="setTimeline(($event.target as HTMLInputElement).checked)">
