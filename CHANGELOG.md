@@ -2,6 +2,39 @@
 
 Este arquivo é mantido automaticamente pelo [semantic-release](https://github.com/semantic-release/semantic-release) a partir dos commits convencionais (`feat:`, `fix:`, …) na branch `main`.
 
+# [1.9.0](https://github.com/GKsegura/hydra/compare/v1.8.0...v1.9.0) (2026-09-30)
+
+
+### Bug Fixes
+
+* **terminal:** não derruba o servidor quando o navegador corta o WebSocket ([97314da](https://github.com/GKsegura/hydra/commit/97314da37db3701dc6af77c5402ada30892bb5ad))
+* **terminal:** reencontra os terminais de cada guia depois de recarregar ([8642c5f](https://github.com/GKsegura/hydra/commit/8642c5f39b59931b34e788d1e08fec519e123cf3))
+
+
+### Features
+
+* **api:** vários workspaces abertos, rotas por workspace e sessão com todas as guias ([f3089af](https://github.com/GKsegura/hydra/commit/f3089afe19ce90a28e92828e5ecd1a33b85500fa))
+* **cenarios:** cherry-pick e rebase na simulação ([9adcec5](https://github.com/GKsegura/hydra/commit/9adcec511e318f3c56b9421511dc9a62e94fbcd6))
+* **cenarios:** motor de simulação de merge sem tocar no repositório ([5478f99](https://github.com/GKsegura/hydra/commit/5478f998793cef83a45dc4bbb21e2efb1328c69c))
+* **cenarios:** rota para simular um cenário em vários repositórios ([70abd3b](https://github.com/GKsegura/hydra/commit/70abd3be90c982deb021781aec3a9195301c2759))
+* **cenarios:** tela para montar e simular cenários de merge ([33bddf5](https://github.com/GKsegura/hydra/commit/33bddf529a737b9cabbfdbc90c12ed72b510e97f))
+* **sessao:** abre caminhos externos como nova guia e adiciona o menu Guias ([7d23bf8](https://github.com/GKsegura/hydra/commit/7d23bf87c80f7cc4121f8c4cc6b0cc2ab7f92add))
+* **sessao:** reabre o último workspace e salva o layout por caminho ([57ef14c](https://github.com/GKsegura/hydra/commit/57ef14cd77a2c8d4248e786908f6750633d99e50))
+* **terminal:** atalhos de divisão, arrastar aba para um painel e menu Terminal ([b7720db](https://github.com/GKsegura/hydra/commit/b7720dbd4944fd8790f19aafac935bab5aa0c111))
+* **terminal:** divide o terminal em dois painéis lado a lado ou empilhados~ ([130f1e9](https://github.com/GKsegura/hydra/commit/130f1e98a573a0c6e0ab28a0dd815638bd36d821))
+* **terminal:** modelo do layout com divisão ([1adff91](https://github.com/GKsegura/hydra/commit/1adff919dca80d7f4df34ce569103849af44e07a))
+* **web:** guias de workspace com Início fixo e estado por guia ([7b7035c](https://github.com/GKsegura/hydra/commit/7b7035c2e3db5ad84b09b1566bbd4feb7d95ab5e))
+* **welcome:** remove o campo de caminho da tela inicial no desktop ([de6b615](https://github.com/GKsegura/hydra/commit/de6b61561d2729080f4039ee032d94b3b3e7418e))
+
+
+### Performance Improvements
+
+* **graph:** adiciona limit ao endpoint /graph e corrige o aviso de truncamento ([63eb800](https://github.com/GKsegura/hydra/commit/63eb80086ca0dc02cc7c4fbc43224588ae7f04d7))
+* **graph:** virtualiza linhas, nós e arestas do painel de grafo ([096cd21](https://github.com/GKsegura/hydra/commit/096cd21b2234b8ea6bbd12c33cac7e2dda989554))
+* **guias:** descarrega os grafos de guias inativas ([f31eb09](https://github.com/GKsegura/hydra/commit/f31eb09ebe7e7f137e98c975a57912c098448b1d))
+* **timeline:** virtualiza as linhas e carrega mais commits conforme a rolagem ([bd02925](https://github.com/GKsegura/hydra/commit/bd02925fa8df99457121bd5fe8c11bc1310847ab))
+* **web:** carrega os grafos por repo conforme ficam prontos e busca mais commits ao rolar ([66e88ff](https://github.com/GKsegura/hydra/commit/66e88ff8fdfa9706a23449142165272138b1a250))
+
 # [1.8.0](https://github.com/GKsegura/hydra/compare/v1.7.0...v1.8.0) (2026-09-27)
 
 
