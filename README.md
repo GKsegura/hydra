@@ -115,6 +115,7 @@ O Hydra foi pensado para:
 - Usa o **Git Bash** que vem com o Git for Windows: prompt com a branch, cores, `vim`, `less` e tudo que você já usa. Sem Git Bash, abre o PowerShell.
 - **O grafo acompanha**: depois de um `git commit`, `git pull` ou `git rebase` no terminal, o painel do repo se atualiza sozinho (pelo [tempo real](#status-filtro-e-integrações)).
 - Abas coloridas com a cor do repo, painel redimensionável, `Ctrl+C` copia quando há texto selecionado e `Ctrl+V` cola. Um `F5` ou `Ctrl+R` reconecta aos mesmos shells sem perder a saída recente.
+- **Dividido em dois**: veja dois terminais ao mesmo tempo, lado a lado (`Ctrl+\`) ou empilhados (`Ctrl+Shift+\`), cada um no seu repositório (por exemplo, a API e o APP). `Ctrl+Alt+→` (ou `←`, `↑`, `↓`) passa o foco para o outro painel.
 
 ### Status, filtro e integrações
 - **Card por repo**: branch, ahead/behind, staged/modificados/novos/conflitos, última tag e idade do último commit.
@@ -137,6 +138,11 @@ O Hydra foi pensado para:
 | `Ctrl+Enter` | commitar (no formulário de commit) |
 | `Ctrl+Shift+Enter` | commit no workspace (a mesma mensagem em vários repos) |
 | `` Ctrl+` `` | mostrar/esconder o terminal integrado (abre um no repo em foco se não houver) |
+| `Ctrl+\` | terminal: dividir lado a lado com um terminal novo no repo em foco (de novo, desfaz a divisão) |
+| `Ctrl+Shift+\` | terminal: dividir empilhado (de novo, desfaz) |
+| `Ctrl+Alt+` `←` `→` `↑` `↓` | terminal dividido: passar o foco para o outro painel |
+| `Ctrl+Tab` / `Ctrl+Shift+Tab` | próxima / anterior guia de workspace (app desktop) |
+| `Ctrl+W` | fechar a guia atual (app desktop; dentro do terminal o `Ctrl+W` continua sendo do shell) |
 | `Esc` | fechar diff, resolvedor, menu ou diálogo; limpar o filtro |
 | `F5` | atualizar os dados (normalmente desnecessário: o Hydra se atualiza em tempo real) |
 | `Ctrl+R` | recarregar a página inteira (depois de atualizar o Hydra) |
@@ -653,8 +659,17 @@ function cronos { hydra "C:\Users\José\Documents\GitHub\CRONOS\cronos.code-work
 4. Rodou `git commit`, `git pull`, `git checkout`…? O grafo daquele repo **atualiza sozinho** logo depois que o comando termina (vale também para comandos rodados fora do Hydra).
 5. Para fechar uma aba: **✕**, clique do meio, ou `exit` no próprio shell.
 
+**Dividindo o terminal**
+
+6. `Ctrl+\` divide o painel **lado a lado**: um terminal novo abre ao lado, no repo do terminal em foco. `Ctrl+Shift+\` divide **empilhado**. Apertando de novo o mesmo atalho, a divisão desfaz (os dois terminais continuam abertos, como abas).
+7. Pelos botões da barra (os dois ícones ao lado de **▾**) você escolhe o **repositório** do terminal novo. O clique direito numa aba oferece **Abrir ao lado / abaixo**, **Mostrar no primeiro/segundo painel** e **Desfazer a divisão**.
+8. Também dá para **arrastar uma aba** para a área dos terminais: soltar em **À direita** ou **Abaixo** divide; com o painel já dividido, soltar em **Painel 1** ou **Painel 2** escolhe onde ela aparece (ou troca os dois de lugar).
+9. Arraste a **divisória** entre os painéis para mudar o tamanho (de 20% a 80%). Clicar num painel ou `Ctrl+Alt+setas` muda o painel em foco. Fechar o ✕ de um painel faz o outro ocupar tudo.
+10. Para dividir, o painel precisa de pelo menos 500 px de largura (lado a lado) ou 260 px de altura (empilhado); senão o Hydra avisa. Cada guia de workspace lembra a sua divisão.
+
 > Com texto selecionado, `Ctrl+C` **copia**; sem seleção, interrompe o comando como sempre. `Ctrl+V` cola.
-> Trocar ou fechar o workspace encerra os terminais dele.
+> Dentro do terminal, `Ctrl+\` é do Hydra (dividir) e não mais o `SIGQUIT` do shell.
+> Fechar a guia do workspace encerra os terminais dele.
 
 ### 17. Encerrando
 

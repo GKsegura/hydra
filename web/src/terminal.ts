@@ -1,9 +1,9 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
-import { watch } from 'vue';
+import { nextTick, watch } from 'vue';
 import { api, IS_STATIC } from './api.ts';
 import { applyTermLayout, repoById, state, termLayout, toast } from './store.ts';
 import {
-  addTab, closeTerminal as closeInLayout, focus, moveToPane, setRatio, splitWith, unsplit, type SplitDirection,
+  addTab, canSplit, closeTerminal as closeInLayout, focus, moveToPane, setRatio, splitWith, unsplit, type SplitDirection,
 } from './terminal-layout.ts';
 
 // A altura do dock vale para todos os workspaces (localStorage). A lista de abas de cada guia vem do servidor (os shells
@@ -106,6 +106,43 @@ export function setSplitRatio(ratio: number) {
 /** Leva um terminal para o painel 0 (primeiro) ou 1 (segundo) de um dock dividido. */
 export function moveTerminalToPane(id: string, index: 0 | 1) {
   applyTermLayout(moveToPane(termLayout(), id, index));
+}
+
+/** Tamanho da área dos terminais (px), para saber se cabe uma divisão. Sem o dock na tela, 0. */
+function dockSize() {
+  const body = document.querySelector<HTMLElement>('.term-body');
+  return { width: body?.clientWidth ?? 0, height: body?.clientHeight ?? 0 };
+}
+
+/** Cabe uma divisão nessa direção? Sem isso os painéis ficariam minúsculos; avisa em vez de dividir. */
+export function fitsSplit(direction: SplitDirection): boolean {
+  const { width, height } = dockSize();
+  const ok = canSplit(direction, width, height);
+  if (!ok) {
+    toast(direction === 'columns' ? 'A janela está estreita demais para dividir lado a lado.' : 'O terminal está baixo demais para dividir. Aumente a altura do dock.', 'error');
+  }
+  return ok;
+}
+
+/**
+ * Atalho de dividir (Ctrl+\ lado a lado, Ctrl+Shift+\ empilhado). Sem terminal, abre um. Sem divisão, divide com um terminal
+ * novo no repo do terminal em foco; já dividido na mesma direção, desfaz; já dividido na outra, só troca a direção.
+ */
+export async function splitShortcut(direction: SplitDirection) {
+  const focused = state.terminal.tabs.find((t) => t.id === state.terminal.active);
+  if (!focused) return openTerminal();
+  if (!state.terminal.open) state.terminal.open = true;
+  if (state.terminal.split === direction) return unsplitTerminal();
+  if (state.terminal.split) return splitWithTerminal(direction, focused.id);
+  await nextTick(); // o dock acabou de abrir? espera a tela para medir
+  if (fitsSplit(direction)) await splitTerminal(direction, focused.repoId);
+}
+
+/** Passa o foco para o outro painel (Ctrl+Alt+setas), se o dock estiver dividido. */
+export function focusOtherPane() {
+  const { panes, active } = state.terminal;
+  if (panes.length < 2) return;
+  focusTerminal(panes[(panes.indexOf(active ?? '') + 1) % panes.length]);
 }
 
 /** Ctrl+`: mostra/esconde o dock. Sem nenhuma aba, abre uma no repo em foco. */

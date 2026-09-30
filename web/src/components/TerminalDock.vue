@@ -2,11 +2,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { openMenu } from '../actions.ts';
-import { repoColor, state, toast } from '../store.ts';
+import { repoColor, state } from '../store.ts';
 import {
-  closeTerminal, focusTerminal, moveTerminalToPane, openTerminal, setSplitRatio, splitTerminal, splitWithTerminal, tabTitle, unsplitTerminal,
+  closeTerminal, fitsSplit, focusTerminal, moveTerminalToPane, openTerminal, setSplitRatio, splitTerminal, splitWithTerminal, tabTitle,
+  unsplitTerminal,
 } from '../terminal.ts';
-import { canSplit, MAX_RATIO, MIN_RATIO, type SplitDirection } from '../terminal-layout.ts';
+import { MAX_RATIO, MIN_RATIO, type SplitDirection } from '../terminal-layout.ts';
 import AppIcon from './AppIcon.vue';
 import TerminalView from './TerminalView.vue';
 
@@ -49,13 +50,28 @@ function pickRepo(ev: MouseEvent) {
 const body = ref<HTMLElement>();
 const split = computed(() => state.terminal.split);
 
-/** Cabe uma divisão nessa direção? Sem isso os painéis ficariam minúsculos; avisa em vez de dividir. */
-function fits(direction: SplitDirection): boolean {
-  const ok = canSplit(direction, body.value?.clientWidth ?? 0, body.value?.clientHeight ?? 0);
-  if (!ok) {
-    toast(direction === 'columns' ? 'A janela está estreita demais para dividir lado a lado.' : 'O terminal está baixo demais para dividir. Aumente a altura do dock.', 'error');
-  }
-  return ok;
+const fits = fitsSplit;
+
+// Arrastar uma aba para a área dos terminais: aparecem zonas de soltar. Sem divisão: "à direita" (lado a lado) e "abaixo"
+// (empilhado); dividido: os dois painéis (soltar troca o terminal daquele painel ou os dois de lugar).
+const draggingTab = ref<string | null>(null);
+const dropOver = ref<string | null>(null);
+
+function onTabDragStart(ev: DragEvent, id: string) {
+  draggingTab.value = id;
+  ev.dataTransfer?.setData('text/plain', id);
+  if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
+}
+function endTabDrag() {
+  draggingTab.value = dropOver.value = null;
+}
+function dropOn(zone: 'columns' | 'rows' | 0 | 1) {
+  const id = draggingTab.value;
+  endTabDrag();
+  if (!id) return;
+  if (zone === 0 || zone === 1) return moveTerminalToPane(id, zone);
+  if (id === state.terminal.active && !split.value) return; // dividir o terminal com ele mesmo não faz sentido
+  if (fits(zone)) splitWithTerminal(zone, id);
 }
 
 /** "Dividir": escolhe o repositório do terminal novo (o do terminal em foco vem primeiro). */
@@ -140,7 +156,10 @@ const dividerStyle = computed(() => {
           class="term-tab"
           :class="{ active: state.terminal.active === t.id, shown: split && state.terminal.panes.includes(t.id) }"
           role="tab"
+          draggable="true"
           :title="`${t.shell} · ${tabTitle(t.repoId)}`"
+          @dragstart="onTabDragStart($event, t.id)"
+          @dragend="endTabDrag"
           @click="focusTerminal(t.id)"
           @auxclick.middle="closeTerminal(t.id)"
           @contextmenu="tabMenu($event, t.id, t.repoId)"
@@ -153,10 +172,10 @@ const dividerStyle = computed(() => {
       <button class="btn ghost sm" title="Novo terminal no repositório em foco" :disabled="!state.active" @click="openTerminal()">+</button>
       <button class="btn ghost sm" title="Novo terminal em outro repositório" @click="pickRepo">▾</button>
       <span class="term-sep" />
-      <button class="btn ghost sm" title="Dividir: novo terminal lado a lado" :disabled="!state.terminal.tabs.length" @click="pickSplit($event, 'columns')">
+      <button class="btn ghost sm" title="Dividir: novo terminal lado a lado (Ctrl+\ divide ou desfaz)" :disabled="!state.terminal.tabs.length" @click="pickSplit($event, 'columns')">
         <svg class="split-ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.5" /><path d="M8 3v10" /></svg>
       </button>
-      <button class="btn ghost sm" title="Dividir: novo terminal empilhado" :disabled="!state.terminal.tabs.length" @click="pickSplit($event, 'rows')">
+      <button class="btn ghost sm" title="Dividir: novo terminal empilhado (Ctrl+Shift+\)" :disabled="!state.terminal.tabs.length" @click="pickSplit($event, 'rows')">
         <svg class="split-ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.5" /><path d="M2 8h12" /></svg>
       </button>
       <button v-if="split" class="btn ghost sm" title="Desfazer a divisão (os terminais continuam abertos)" @click="unsplitTerminal">Desfazer divisão</button>
@@ -182,6 +201,25 @@ const dividerStyle = computed(() => {
         title="Arraste para ajustar o tamanho dos painéis"
         @pointerdown="startDivider"
       />
+      <!-- Zonas de soltar, só enquanto uma aba está sendo arrastada. -->
+      <div v-if="draggingTab" class="term-drop" :class="split ?? 'single'">
+        <template v-if="split">
+          <div
+            v-for="i in [0, 1] as const"
+            :key="i"
+            class="term-drop-zone"
+            :class="{ over: dropOver === String(i) }"
+            :style="split === 'rows' ? { gridRow: i + 1 } : { gridColumn: i + 1 }"
+            @dragover.prevent="dropOver = String(i)"
+            @dragleave="dropOver = null"
+            @drop.prevent="dropOn(i)"
+          >Painel {{ i + 1 }}</div>
+        </template>
+        <template v-else>
+          <div class="term-drop-zone right" :class="{ over: dropOver === 'columns' }" @dragover.prevent="dropOver = 'columns'" @dragleave="dropOver = null" @drop.prevent="dropOn('columns')">À direita</div>
+          <div class="term-drop-zone below" :class="{ over: dropOver === 'rows' }" @dragover.prevent="dropOver = 'rows'" @dragleave="dropOver = null" @drop.prevent="dropOn('rows')">Abaixo</div>
+        </template>
+      </div>
     </div>
   </div>
 </template>

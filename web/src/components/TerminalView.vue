@@ -83,6 +83,9 @@ term.attachCustomKeyEventHandler((ev) => {
   if (ev.type !== 'keydown' || !(ev.ctrlKey || ev.metaKey)) return true;
   const key = ev.key.toLowerCase();
   if (key === '`') return false;
+  // Atalhos do Hydra que passam pelo terminal: dividir (Ctrl+\ e Ctrl+Shift+\; no shell o Ctrl+\ seria SIGQUIT), passar o foco
+  // entre painéis (Ctrl+Alt+setas) e trocar de guia (Ctrl+Tab).
+  if (key === '\\' || key === '|' || key === 'tab' || (ev.altKey && key.startsWith('arrow'))) return false;
   if (key === 'c' && term.hasSelection()) {
     navigator.clipboard?.writeText(term.getSelection()).catch(() => {});
     term.clearSelection();

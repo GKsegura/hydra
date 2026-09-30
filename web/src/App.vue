@@ -20,7 +20,7 @@ import {
   activateTab, backToPreviousTab, closeDiff, closeWorkspace, connectEvents, cycleTab, hasWip, moveSelection, openWorkspace, pickWorkspace,
   refresh, state, syncFromServer,
 } from './store.ts';
-import { loadTerminalInfo, toggleTerminal } from './terminal.ts';
+import { focusOtherPane, loadTerminalInfo, splitShortcut, toggleTerminal, unsplitTerminal } from './terminal.ts';
 
 const topbar = ref<InstanceType<typeof TopBar>>();
 
@@ -57,6 +57,10 @@ function runAction(action: string) {
     case 'open-explorer': return needsRepo((r) => openIn(r, 'explorer'));
     case 'open-terminal': return needsRepo((r) => openIn(r, 'terminal'));
     case 'terminal': return state.summary ? toggleTerminal() : undefined;
+    case 'term-split-columns': return state.summary ? splitShortcut('columns') : undefined;
+    case 'term-split-rows': return state.summary ? splitShortcut('rows') : undefined;
+    case 'term-unsplit': return unsplitTerminal();
+    case 'term-focus-other': return focusOtherPane();
     case 'workspace-commit': return state.summary ? openDialog('workspace-commit') : undefined;
     case 'workspace-branch': return state.summary ? openDialog('workspace-branch') : undefined;
     case 'open-github': return needsRepo(openOnGitHub);
@@ -76,9 +80,22 @@ function onKey(ev: KeyboardEvent) {
     ev.preventDefault();
     return runAction('workspace-commit');
   }
+  // Terminal dividido (funcionam também com o foco dentro do terminal): Ctrl+\ divide lado a lado (ou desfaz),
+  // Ctrl+Shift+\ empilha; Ctrl+Alt+setas passam o foco para o outro painel. No ABNT2 o Shift+\ chega como "|".
+  if (ctrl && !IS_STATIC && state.summary) {
+    if (ev.key === '\\' || ev.key === '|') {
+      ev.preventDefault();
+      return runAction(ev.shiftKey || ev.key === '|' ? 'term-split-rows' : 'term-split-columns');
+    }
+    if (ev.altKey && ev.key.startsWith('Arrow')) {
+      ev.preventDefault();
+      return runAction('term-focus-other');
+    }
+  }
   // Guias. No navegador, Ctrl+W e Ctrl+Tab são do próprio navegador e não dá para interceptar; no app funcionam.
   if (ctrl && desktop && !IS_STATIC) {
-    if (key === 'w' && !ev.shiftKey) {
+    // Dentro do terminal, Ctrl+W é do shell (apagar palavra): fechar a guia por engano mataria os terminais dela.
+    if (key === 'w' && !ev.shiftKey && !(ev.target as HTMLElement).closest?.('.xterm')) {
       ev.preventDefault();
       return closeWorkspace();
     }

@@ -836,3 +836,16 @@ a { color: var(--accent); }
 .tab .x:hover { background: var(--bg); color: var(--text); }
 .tab.over { box-shadow: inset 2px 0 0 var(--accent); }
 .tab.dragging { opacity: .5; }
+
+/* Soltar uma aba na área dos terminais para dividir (ou para escolher o painel). */
+.term-drop { position: absolute; inset: 0; z-index: 5; display: grid; gap: 4px; padding: 4px; background: rgba(21, 23, 28, .55); }
+.term-drop.columns { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+.term-drop.rows { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+.term-drop.single { grid-template-columns: 2fr 1fr; grid-template-rows: 2fr 1fr; }
+.term-drop-zone {
+  display: grid; place-items: center; border: 2px dashed var(--line); border-radius: 8px; color: var(--muted); font-weight: 600;
+  background: rgba(28, 31, 38, .7);
+}
+.term-drop-zone.over { border-color: var(--accent); color: var(--text); background: var(--accent-soft); }
+.term-drop.single .term-drop-zone.right { grid-column: 2; grid-row: 1 / span 2; }
+.term-drop.single .term-drop-zone.below { grid-column: 1; grid-row: 2; }

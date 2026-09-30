@@ -212,6 +212,17 @@ function buildMenu() {
       ],
     },
     {
+      label: 'Terminal',
+      submenu: [
+        { label: 'Mostrar/esconder', accelerator: 'CmdOrCtrl+`', registerAccelerator: false, click: () => menuAction('terminal') },
+        { type: 'separator' },
+        { label: 'Dividir lado a lado', accelerator: 'CmdOrCtrl+\\', registerAccelerator: false, click: () => menuAction('term-split-columns') },
+        { label: 'Dividir empilhado', accelerator: 'CmdOrCtrl+Shift+\\', registerAccelerator: false, click: () => menuAction('term-split-rows') },
+        { label: 'Desfazer divisão', click: () => menuAction('term-unsplit') },
+        { label: 'Passar o foco para o outro painel', accelerator: 'CmdOrCtrl+Alt+Right', registerAccelerator: false, click: () => menuAction('term-focus-other') },
+      ],
+    },
+    {
       label: 'Exibir',
       submenu: [
         { label: 'Recarregar', role: 'reload' },
