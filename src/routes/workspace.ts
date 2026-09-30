@@ -1,7 +1,7 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 import express from 'express';
 import { HttpError, str } from '../http.ts';
-import { branchOverview, checkoutMany, commitMany, createMany, mergeMany, previewMany } from '../multi.ts';
+import { branchOverview, checkoutMany, commitMany, createMany, mergeMany, previewMany, simulateMany } from '../multi.ts';
 import type { Repo } from '../workspace.ts';
 import type { WorkspaceScope } from '../workspace-session.ts';
 
@@ -57,6 +57,19 @@ export function workspaceRoutes(ctx: { session: WorkspaceScope }) {
   });
   r.post('/workspace/branches/merge-preview', async (req, res) => {
     res.json(await previewMany(reposOf(req.body?.repos), str(req.body?.branch, 'a branch').trim()));
+  });
+  // Cenário: simula uma sequência de merges sobre uma base em vários repos. Só leitura: não muda nada, pode ser chamado à vontade.
+  const MAX_SCENARIO_STEPS = 10;
+  r.post('/workspace/scenario/simulate', async (req, res) => {
+    const base = str(req.body?.base, 'a branch base').trim();
+    const list: unknown = req.body?.steps;
+    if (!Array.isArray(list) || !list.length) throw new HttpError(400, 'Informe pelo menos um passo');
+    if (list.length > MAX_SCENARIO_STEPS) throw new HttpError(400, `No máximo ${MAX_SCENARIO_STEPS} passos por cenário`);
+    const steps = list.map((s: { op?: unknown; branch?: unknown }) => {
+      if (s?.op !== 'merge') throw new HttpError(400, 'Por enquanto só existe o passo "merge"');
+      return { op: 'merge' as const, branch: str(s.branch, 'a branch do passo').trim() };
+    });
+    res.json(await simulateMany(reposOf(req.body?.repos), base, steps));
   });
   r.post('/workspace/branches/merge', async (req, res) => {
     const branch = str(req.body?.branch, 'a branch').trim();
