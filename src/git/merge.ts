@@ -14,21 +14,26 @@ export interface MergePreview {
   conflicts: string[];
 }
 
-/** Prevê o resultado do merge sem tocar na área de trabalho, como o GitHub Desktop faz. */
-export async function previewMerge(cwd: string, branch: string): Promise<MergePreview> {
+/**
+ * Prevê o resultado do merge sem tocar na área de trabalho, como o GitHub Desktop faz.
+ * `base` é o que recebe o merge (padrão: a branch atual, `HEAD`); com outra ref, dá para perguntar
+ * "o que aconteceria se `develop` recebesse `feature/x`?" sem fazer checkout de `develop`.
+ */
+export async function previewMerge(cwd: string, branch: string, base = 'HEAD'): Promise<MergePreview> {
   await assertBranchExists(cwd, branch);
-  const commits = Number((await git(cwd, ['rev-list', '--count', `HEAD..${branch}`])).trim());
-  const fastForward = (await gitRaw(cwd, ['merge-base', '--is-ancestor', 'HEAD', branch])).code === 0;
+  if (base !== 'HEAD') await assertBranchExists(cwd, base);
+  const commits = Number((await git(cwd, ['rev-list', '--count', `${base}..${branch}`])).trim());
+  const fastForward = (await gitRaw(cwd, ['merge-base', '--is-ancestor', base, branch])).code === 0;
   let conflicts: string[] = [];
   if (commits > 0 && !fastForward) {
-    const r = await gitRaw(cwd, ['merge-tree', '--write-tree', '--name-only', '--no-messages', 'HEAD', branch]);
+    const r = await gitRaw(cwd, ['merge-tree', '--write-tree', '--name-only', '--no-messages', base, branch]);
     // Saída: <tree>\n<arquivo em conflito>… — código 1 quando há conflitos.
     if (r.code === 1) conflicts = r.stdout.split('\n').slice(1).map((l) => l.trim()).filter(Boolean);
   }
   return { commits, fastForward, upToDate: commits === 0, conflicts: [...new Set(conflicts)] };
 }
 
-async function assertBranchExists(cwd: string, branch: string) {
+export async function assertBranchExists(cwd: string, branch: string) {
   if (branch.startsWith('-') || (await gitRaw(cwd, ['rev-parse', '--verify', '-q', `${branch}^{commit}`])).code !== 0) {
     throw new GitError(`Branch "${branch}" não encontrada.`);
   }

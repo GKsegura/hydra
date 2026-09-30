@@ -44,13 +44,16 @@ export interface GitResult {
   stderr: string;
 }
 
-/** Executa git sem shell e devolve o código de saída sem lançar erro (para comandos em que 1 = "tem conflito"). */
-export function gitRaw(cwd: string, args: string[], input?: string): Promise<GitResult> {
+/**
+ * Executa git sem shell e devolve o código de saída sem lançar erro (para comandos em que 1 = "tem conflito").
+ * `env` acrescenta variáveis de ambiente só para essa chamada (ex.: um diretório de objetos temporário).
+ */
+export function gitRaw(cwd: string, args: string[], input?: string, env?: NodeJS.ProcessEnv): Promise<GitResult> {
   return new Promise((resolve) => {
     const child = execFile(
       'git',
       [...BASE_ARGS, ...args],
-      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: 'utf8', windowsHide: true, env: gitEnv() },
+      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: 'utf8', windowsHide: true, env: { ...gitEnv(), ...env } },
       (err, stdout, stderr) => {
         const code = err ? (typeof (err as NodeJS.ErrnoException).code === 'number' ? Number((err as NodeJS.ErrnoException).code) : 1) : 0;
         resolve({ code, stdout, stderr });
@@ -61,8 +64,8 @@ export function gitRaw(cwd: string, args: string[], input?: string): Promise<Git
 }
 
 /** Executa git sem shell, com saída em UTF-8 e sem cores. Lança GitError se o comando falhar. */
-export async function git(cwd: string, args: string[], input?: string): Promise<string> {
-  const r = await gitRaw(cwd, args, input);
+export async function git(cwd: string, args: string[], input?: string, env?: NodeJS.ProcessEnv): Promise<string> {
+  const r = await gitRaw(cwd, args, input, env);
   if (r.code !== 0) throw new GitError(friendly(r.stderr || r.stdout) || `git ${args[0]} falhou`, r.stderr);
   return r.stdout;
 }
