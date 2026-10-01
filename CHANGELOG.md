@@ -2,6 +2,13 @@
 
 Este arquivo é mantido automaticamente pelo [semantic-release](https://github.com/semantic-release/semantic-release) a partir dos commits convencionais (`feat:`, `fix:`, …) na branch `main`.
 
+# [1.11.0](https://github.com/GKsegura/hydra/compare/v1.10.0...v1.11.0) (2026-10-01)
+
+
+### Features
+
+* **vscode:** adiciona extensão do VS Code ([0eb9eeb](https://github.com/GKsegura/hydra/commit/0eb9eeb3447805484e71544da20616cd0e07b704))
+
 # [1.10.0](https://github.com/GKsegura/hydra/compare/v1.9.0...v1.10.0) (2026-10-01)
 
 
