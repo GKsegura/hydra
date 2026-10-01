@@ -95,6 +95,13 @@ O Hydra foi pensado para:
 - Arquivos binários ou apagados de um lado: escolha do arquivo inteiro.
 - **Concluir** ou **abortar** merge, revert e cherry-pick, com a mensagem do commit editável.
 
+### Rebase interativo
+- **"Rebase interativo a partir daqui…"** (clique direito num commit): reordene os commits arrastando (ou com ↑↓), e escolha **pick / reword / squash / fixup / drop** para cada um. Uma prévia mostra o que vai acontecer ("3 commits → 2") antes de confirmar.
+- **"Rebase de *atual* sobre…"** (seletor de branch): leva os commits únicos da branch atual para cima de outra, na mesma ordem, sem editar a lista — o uso mais comum do dia a dia.
+- Reescrever um commit que **já está no remoto** pede uma segunda confirmação: avisa que o próximo push vai precisar de `--force`. O Hydra nunca faz esse push forçado sozinho.
+- Conflito no meio do rebase usa o **mesmo resolvedor visual** do merge, com **Continuar** no lugar de "Concluir" (o rebase não pede uma mensagem de commit a cada passo — só quando você pede "reword").
+- É um rebase de verdade no repositório (`git rebase -i`), diferente do **Cenário** (simulador de merge/cherry-pick/rebase, veja acima), que testa "e se" num sandbox sem alterar nada.
+
 ### Commits
 - **Stage/unstage** por arquivo ou tudo, com **diff** de qualquer arquivo.
 - **Stage parcial**: no diff, escolha **trechos** ("Stage deste trecho") ou **linhas soltas** (clique, `Shift` para um intervalo) e só elas entram no stage. No diff do stage, o mesmo vale para tirar linhas. Assim duas mudanças sem relação no mesmo arquivo viram commits separados.
@@ -547,6 +554,8 @@ A setinha **▾** ao lado (ou clique direito no botão) oferece **Fetch, Pull e 
 
 A qualquer momento, **Abortar** volta tudo a como estava antes do merge. Fechar o resolvedor (✕) não aborta nada: o merge fica em andamento e dá para voltar pela faixa amarela ou pela lista de arquivos em conflito no painel direito. Revert e cherry-pick com conflito seguem exatamente o mesmo fluxo.
 
+**Rebase interativo:** clique direito num commit → **"Rebase interativo a partir daqui…"**. Arraste os commits para reordenar (ou use ↑↓) e escolha, em cada um, **pick** (mantém), **reword** (nova mensagem), **squash** (junta no commit anterior, com a mensagem que você escrever), **fixup** (junta e descarta a mensagem) ou **drop** (remove). O rodapé mostra um resumo ("3 commits → 2") e, se algum commit já estiver no remoto, pede uma segunda confirmação antes de reescrever o histórico publicado. Para só atualizar a branch atual em cima de outra, sem reordenar nada, use **"Rebase de *atual* sobre…"** no seletor de branch (`⎇ main ▾`). Um conflito no meio do rebase abre o mesmo resolvedor visual do merge, com **Continuar** na faixa amarela.
+
 ### 10. Stash, tags, reverter e cherry-pick
 
 - **Guardar alterações (stash):** menu `⋯` do painel, botão **Stash** no painel de commit ou clique direito na linha `// WIP`. Dê uma descrição opcional.
@@ -748,7 +757,7 @@ Abra `http://localhost:5173/?t=<token>` usando o mesmo token do terminal 1.
 
 ### Testes
 
-`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Confere as branches no workspace (criar pulando onde já existe, trocar com stash, criando onde falta e rastreando branch só remota, prévia e merge com um repo em conflito), o commit no workspace (stage respeitado por repo, "incluir tudo", hook que falha num repo sem afetar os outros, repo com merge pulado), o stage parcial (trecho, linhas soltas, unstage, CRLF e a recusa quando o arquivo muda no meio), o tempo real (um commit feito por fora vira um aviso só, e ruído do `.git/objects` é ignorado), a ordenação da timeline unificada, a comparação de versões usada no aviso de atualização e abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
+`npm test` cria repositórios git temporários (e um repositório **bare** fazendo papel de "GitHub") e exercita as operações de verdade: commit/amend/undo, descartar, revert, cherry-pick, criar/renomear/excluir branch (local e remota), troca de branch com stash, merge fast-forward e com conflito, parse de conflitos (inclusive diff3), resolver e abortar, push/pull/fetch, push recusado, tags, clone, stash, criação de repositório e o layout do grafo. Confere o rebase interativo (reordenar, squash e reword com mensagem exata, fixup, drop, conflito em cadeia resolvido até o fim, abortar, rebase sobre outra branch, recusa com alterações pendentes ou lista que não bate), as branches no workspace (criar pulando onde já existe, trocar com stash, criando onde falta e rastreando branch só remota, prévia e merge com um repo em conflito), o commit no workspace (stage respeitado por repo, "incluir tudo", hook que falha num repo sem afetar os outros, repo com merge pulado), o stage parcial (trecho, linhas soltas, unstage, CRLF e a recusa quando o arquivo muda no meio), o tempo real (um commit feito por fora vira um aviso só, e ruído do `.git/objects` é ignorado), a ordenação da timeline unificada, a comparação de versões usada no aviso de atualização e abre shells de verdade pelo terminal integrado (comandos, redimensionamento, reconexão) e confere que o WebSocket recusa token errado e origem de fora.
 
 ### Commits, versões e releases
 
@@ -791,11 +800,13 @@ hydra/
 │  ├─ routes/
 │  │  ├─ repo.ts               # /api/repos/:id/… branches, sync, merge, conflitos, stash, tags…
 │  │  ├─ app.ts                # clonar, criar repositório, conta do GitHub
-│  │  └─ terminal.ts           # abrir/fechar terminais integrados
+│  │  ├─ terminal.ts           # abrir/fechar terminais integrados
+│  │  └─ workspace.ts          # commit e branches em vários repositórios de uma vez
 │  ├─ terminal.ts              # shells (node-pty): Git Bash/PowerShell, scrollback, resize
 │  ├─ git/                     # tudo que fala com o git, um arquivo por assunto
 │  │  ├─ core.ts               # execução (sem shell), progresso, mensagens amigáveis, token
 │  │  ├─ partial.ts            # stage parcial: monta o patch das linhas escolhidas e aplica com git apply --cached
+│  │  ├─ rebase.ts             # rebase interativo de verdade: pick/reword/squash/fixup/drop com git rebase -i
 │  │  ├─ log.ts · status.ts · diff.ts · commit.ts
 │  │  ├─ branches.ts · remote.ts · merge.ts · stash.ts · tags.ts · repo.ts
 │  │  └─ index.ts
@@ -820,9 +831,9 @@ hydra/
 │     │                        # OperationBanner, ContextMenu, SideBar, WipPanel, WelcomeScreen,
 │     │                        # TerminalDock (painel e abas), TerminalView (xterm.js),
 │     │                        # UpdateNotice (aviso de atualização), TimelinePane…
-│     └─ dialogs/              # criar/renomear/excluir branch, merge, clonar, novo repo,
+│     └─ dialogs/              # criar/renomear/excluir branch, merge, rebase interativo, clonar, novo repo,
 │                              # publicar, tag, stash, GitHub, confirmação
-├─ test/                       # Vitest: operações git em repositórios temporários, terminal e versões
+├─ test/                       # Vitest: operações git em repositórios temporários, rebase, terminal e versões
 ├─ scripts/ · build/icon.svg   # build do Electron e ícone
 ├─ build/installer.nsh         # "Abrir com Hydra" no Explorer (registro em HKCU, só no instalador)
 ├─ .github/workflows/ci.yml    # testes, semantic-release e instalador + portátil + latest.yml na Release
@@ -860,6 +871,7 @@ Todas as rotas exigem o header `x-hydra-token` (os streams de eventos aceitam `?
 | Branches | `POST …/branches` · `…/branches/{checkout,rename,delete,delete-remote}` · `…/checkout-commit` |
 | Sync (jobs) | `POST …/{fetch,pull,push,publish}` · `POST …/remotes` (conectar um `origin`, usado no "Publicar" manual) |
 | Merge e conflitos | `GET …/merge/preview?branch=` · `POST …/merge` · `POST …/operation/{abort,continue}` · `GET …/conflicts/file?path=` · `POST …/conflicts/resolve` |
+| Rebase interativo | `GET …/rebase/plan?base=` · `POST …/rebase` (`{ base, steps }`) · `POST …/rebase-onto` (`{ upstream }`) — conflito e continuar usam as mesmas rotas de operação acima |
 | Stash e tags | `POST …/stashes` · `…/stashes/{apply,drop}` · `POST …/tags` · `…/tags/{push,delete}` |
 | Outros | `POST …/open` (VS Code/Explorer/terminal externo) · `GET …/compare-url` |
 | Terminal integrado | `GET /api/terminal` · `POST /api/repos/:id/terminals` · `DELETE /api/terminals/:tid` · WebSocket `/api/terminals/:tid/ws?t=` (entrada `i…`, redimensionar `r{cols,rows}`) |
@@ -886,13 +898,13 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
   - o shell só abre na pasta de um repositório do workspace aberto (o caminho vem da sessão, nunca da requisição);
   - o WebSocket exige o token da sessão e recusa conexões cujo `Origin` não seja a própria interface local, então um site aberto no navegador não consegue se conectar ao seu shell;
   - trocar ou fechar o workspace, fechar o app ou dar Ctrl+C no CLI encerra os shells.
-- **Ações destrutivas** (excluir branch/tag, descartar, abortar, desfazer commit) pedem confirmação. Excluir branch não mergeada pede uma segunda confirmação, e descartar no app vai para a Lixeira.
+- **Ações destrutivas** (excluir branch/tag, descartar, abortar, desfazer commit) pedem confirmação. Excluir branch não mergeada pede uma segunda confirmação, e descartar no app vai para a Lixeira. Rebasear um commit que já está no remoto pede uma segunda confirmação também (reescreve histórico publicado).
 - **No app desktop:** a janela roda com `contextIsolation` e `sandbox`, sem acesso ao Node. A ponte tem cinco funções, links externos abrem no navegador padrão e a janela não navega para fora do servidor local.
 
 ## Limitações conhecidas
 
 - Carrega os **N commits mais recentes** por repo (padrão 1000; no CLI, `--max`).
-- **Rebase** interativo/em andamento não é conduzido pela interface (o Hydra detecta e pede para concluir no terminal integrado).
+- O **rebase interativo** reescreve o histórico: reword/squash exigem uma mensagem própria (sem editor interativo no meio do processo), e o Hydra nunca faz `push --force` sozinho — se um commit reescrito já estava no remoto, isso fica por sua conta.
 - O **terminal integrado** não sobrevive a reiniciar o Hydra: fechar o app encerra os shells. Um `F5`/`Ctrl+R` reconecta aos mesmos shells.
 - O **stage parcial** não vale para arquivos novos (ainda fora do índice), renomeados, binários ou em conflito: esses vão inteiros.
 - Commits de merge mostram os arquivos em relação ao **primeiro pai**.
@@ -914,7 +926,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - [x] **Commit em vários repos de uma vez** com a mesma mensagem (ex.: a mesma feature nos 4 repos do CRONOS)
 - [x] **Branches cross-repo**: criar/trocar/mergear a mesma branch em todos os repos do workspace
 - [x] **Timeline unificada**: todos os commits do workspace numa linha do tempo só (opcional, ao lado dos grafos ou sozinha)
-- [ ] Rebase interativo visual
+- [x] Rebase interativo visual
 - [x] Atualização em tempo real (observar os repos em vez de atualizar no foco)
 - [x] Instalador com atualização automática
 - [x] Associação de arquivos ("Abrir com Hydra" no `.code-workspace`, sem tirar o VS Code como padrão)
