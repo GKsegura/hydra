@@ -6,7 +6,7 @@ import {
   createTag, currentBranch, deleteBranch, deleteRemoteBranch, deleteTag, discard, fetchAll, getStatus, GitError,
   lastCommitMessage, listBranches, listRemotes, listStashes, mergeBranch, pendingMessage, previewMerge, pull, push,
   pushTag, readConflict, renameBranch, resolveWhole, resolveWithContent, revertCommit, stashApply, stashDrop,
-  stashLabel, stashPush, undoLastCommit, incomingLabel, defaultRemote, assertCloneUrl,
+  stashLabel, stashPush, undoLastCommit, incomingLabel, defaultRemote, assertCloneUrl, rebasePlan, rebaseOnto, startRebase, type RebaseStep,
 } from '../git/index.ts';
 import { compareUrl, createRepo, listPulls } from '../github.ts';
 import type { GitHubSession } from '../github-session.ts';
@@ -130,6 +130,30 @@ export function repoRoutes(ctx: RepoContext) {
     if (!st.operation) throw new HttpError(400, 'Nenhuma operação em andamento.');
     await abortOperation(repo.path, st.operation);
     res.json({ ok: true });
+  });
+  // ---------------------------------------------------------------- rebase interativo
+  r.get('/rebase/plan', async (req, res) => {
+    res.json(await rebasePlan(repoOf(req).path, str(req.query.base, 'a base')));
+  });
+  r.post('/rebase', async (req, res) => {
+    const repo = repoOf(req);
+    const base = str(req.body?.base, 'a base');
+    const raw = req.body?.steps;
+    if (!Array.isArray(raw) || !raw.length) throw new HttpError(400, 'Escolha pelo menos um commit');
+    const actions = new Set(['pick', 'reword', 'squash', 'fixup', 'drop']);
+    const steps: RebaseStep[] = raw.map((s: Record<string, unknown>) => {
+      if (typeof s?.hash !== 'string' || !HASH.test(s.hash) || !actions.has(s.action as string)) throw new HttpError(400, 'Passo de rebase inválido');
+      return {
+        hash: s.hash,
+        action: s.action as RebaseStep['action'],
+        summary: typeof s.summary === 'string' ? s.summary : undefined,
+        body: typeof s.body === 'string' ? s.body : undefined,
+      };
+    });
+    res.json(await startRebase(repo.path, base, steps));
+  });
+  r.post('/rebase-onto', async (req, res) => {
+    res.json(await rebaseOnto(repoOf(req).path, str(req.body?.upstream, 'a branch')));
   });
   r.post('/operation/continue', async (req, res) => {
     const repo = repoOf(req);

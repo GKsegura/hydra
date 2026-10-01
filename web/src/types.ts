@@ -2,7 +2,7 @@
 // Os tipos vêm direto do backend: front e servidor falam a mesma língua.
 export type {
   Branch, Commit, CommitDetail, ConflictFile, FileChange, MergePreview, MergeResult, Operation, Progress, Ref, Remote,
-  RepoStatus, Segment, Stash,
+  RebaseAction, RebaseCommit, RebasePlan, RebaseStep, RepoStatus, Segment, Stash,
 } from '../../src/git/index.ts';
 export type { GitHubRepo, PullRequest } from '../../src/github.ts';
 export type { JobEvent } from '../../src/jobs.ts';

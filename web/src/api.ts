@@ -1,8 +1,8 @@
 // Hydra — © 2026 José Segura (GKsegura) · MIT
 import type {
   AppInfo, Boot, BranchInfo, CommitDetail, ConflictFile, GitHubInfo, GitHubRepo, JobEvent, MergePreview, MergeResult,
-  OperationInfo, Progress, PullsInfo, RepoBranches, RepoGraph, RepoMergePreview, RepoResult, RepoScenario, RepoStatus, ScenarioStepInput,
-  TerminalInfo, WorkspaceSummary,
+  OperationInfo, Progress, PullsInfo, RebasePlan, RebaseStep, RepoBranches, RepoGraph, RepoMergePreview, RepoResult, RepoScenario,
+  RepoStatus, ScenarioStepInput, TerminalInfo, WorkspaceSummary,
 } from './types.ts';
 
 // No modo servidor o hydra injeta o token no HTML; no `npm run dev` (Vite) ele vem por ?t= na URL.
@@ -169,6 +169,11 @@ export const api = {
   merge: (id: string, branch: string, noFastForward: boolean) => post<MergeResult>(`${repo(id)}/merge`, { branch, noFastForward }),
   abortOperation: (id: string) => post(`${repo(id)}/operation/abort`),
   continueOperation: (id: string, message: string) => post<{ hash: string }>(`${repo(id)}/operation/continue`, { message }),
+  rebasePlan: (id: string, base: string) => call<RebasePlan>(`${repo(id)}/rebase/plan?base=${enc(base)}`),
+  rebase: (id: string, base: string, steps: RebaseStep[]) =>
+    post<{ done: true; hash: string } | { done: false; conflicts: number }>(`${repo(id)}/rebase`, { base, steps }),
+  rebaseOnto: (id: string, upstream: string) =>
+    post<{ done: true; hash: string } | { done: false; conflicts: number }>(`${repo(id)}/rebase-onto`, { upstream }),
   conflictFile: (id: string, path: string) => call<ConflictFile>(`${repo(id)}/conflicts/file?path=${enc(path)}`),
   resolveContent: (id: string, path: string, content: string) => post<RepoStatus>(`${repo(id)}/conflicts/resolve`, { path, content }),
   resolveSide: (id: string, path: string, side: 'ours' | 'theirs' | 'delete') => post<RepoStatus>(`${repo(id)}/conflicts/resolve`, { path, side }),

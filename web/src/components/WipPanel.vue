@@ -129,7 +129,14 @@ function fileMenu(ev: MouseEvent, path: string, isStaged: boolean) {
       Modo somente leitura (HTML gerado com <code>--out</code>). Rode <code>hydra</code> sem <code>--out</code> para commitar.
     </div>
 
-    <!-- Concluir merge/revert -->
+    <!-- Continuar rebase: sem mensagem — cada commit do rebase mantém a própria mensagem (reword é na hora de montar). -->
+    <form v-else-if="status.operation === 'rebase'" class="commit-box" @submit.prevent="continueOperation(repoId, '')">
+      <p class="faint">Resolva os conflitos acima e continue. Pra mudar a mensagem de um commit, use "reword" ao montar o rebase.</p>
+      <button class="btn primary" :disabled="!!conflicted.length || state.busy">Continuar rebase</button>
+      <button class="btn ghost" type="button" @click="abortOperation(repoId)">Abortar rebase</button>
+    </form>
+
+    <!-- Concluir merge/revert/cherry-pick -->
     <form v-else-if="status.operation" class="commit-box" @submit.prevent="continueOperation(repoId, opMessage)">
       <div class="lbl"><span>Mensagem do commit de {{ status.operation }}</span></div>
       <textarea v-model="opMessage" rows="4" />

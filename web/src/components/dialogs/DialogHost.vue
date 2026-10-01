@@ -12,6 +12,7 @@ import DeleteBranchDialog from './DeleteBranchDialog.vue';
 import GitHubDialog from './GitHubDialog.vue';
 import MergeDialog from './MergeDialog.vue';
 import PublishDialog from './PublishDialog.vue';
+import RebaseDialog from './RebaseDialog.vue';
 import RenameBranchDialog from './RenameBranchDialog.vue';
 import ScenarioDialog from './ScenarioDialog.vue';
 import StashDialog from './StashDialog.vue';
@@ -35,6 +36,7 @@ const DIALOGS: Record<string, Component> = {
   'workspace-commit': WorkspaceCommitDialog,
   'workspace-branch': WorkspaceBranchDialog,
   scenario: ScenarioDialog,
+  rebase: RebaseDialog,
 };
 </script>
 

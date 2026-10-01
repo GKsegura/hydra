@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { git, GitError, gitOrNull, gitPath, gitRaw } from './core.ts';
 import { currentBranch } from './branches.ts';
+import { continueRebase } from './rebase.ts';
 import { getStatus, type Operation } from './status.ts';
 
 export interface MergePreview {
@@ -78,7 +79,7 @@ export async function incomingLabel(cwd: string): Promise<string> {
 export async function continueOperation(cwd: string, op: Operation, message: string): Promise<string> {
   const st = await getStatus(cwd);
   if (st.conflicted > 0) throw new GitError(`Ainda há ${st.conflicted} arquivo(s) em conflito.`);
-  if (op === 'rebase') throw new GitError('Rebase em andamento: conclua pelo terminal (git rebase --continue).');
+  if (op === 'rebase') return continueRebase(cwd);
   if (op === 'merge') {
     if (message.trim()) await git(cwd, ['commit', '-F', '-'], `${message.trim()}\n`);
     else await git(cwd, ['commit', '--no-edit']); // usa a mensagem que o git preparou (MERGE_MSG)

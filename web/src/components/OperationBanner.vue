@@ -1,7 +1,7 @@
 <!-- Hydra — © 2026 José Segura (GKsegura) · MIT -->
 <script setup lang="ts">
 import { computed, watch } from 'vue';
-import { abortOperation, openConflict } from '../actions.ts';
+import { abortOperation, continueOperation, openConflict } from '../actions.ts';
 import { loadOperation, selectWip, state, statusOf } from '../store.ts';
 
 // Faixa de "merge/revert em andamento" no topo do painel do repo.
@@ -32,6 +32,7 @@ const conflicts = computed(() => status.value?.conflicted ?? 0);
     <span class="op-state">{{ conflicts ? `${conflicts} conflito(s)` : 'pronto para concluir' }}</span>
     <span class="spacer" />
     <button v-if="conflicts && op?.conflicts[0]" class="btn sm" @click="openConflict(repoId, op.conflicts[0].path)">Resolver</button>
+    <button v-else-if="status?.operation === 'rebase'" class="btn sm primary" :disabled="state.busy" @click="continueOperation(repoId, '')">Continuar</button>
     <button v-else class="btn sm primary" @click="selectWip(repoId)">Concluir…</button>
     <button class="btn sm ghost" @click="abortOperation(repoId)">Abortar</button>
   </div>

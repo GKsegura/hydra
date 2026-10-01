@@ -875,3 +875,23 @@ a { color: var(--accent); }
 .sc-what { white-space: nowrap; }
 .sc-what code { font-family: var(--mono); color: var(--accent); }
 .sc-text { color: inherit; min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------------------------------------------------------------- rebase interativo */
+
+.rebase-list { list-style: none; margin: 8px 0; padding: 0; max-height: 360px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; }
+.rebase-row { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); }
+.rebase-row:last-child { border-bottom: 0; }
+.rebase-row.drop { opacity: .5; }
+.rebase-main { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.rebase-handle { cursor: grab; color: var(--faint); padding: 0 2px; }
+.rebase-order { display: flex; gap: 2px; }
+.rebase-order .btn { height: 22px; width: 22px; padding: 0; justify-content: center; }
+.rebase-action { font: inherit; font-size: 12px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 3px 4px; flex: none; }
+.rebase-hash { font-family: var(--mono); font-size: 11.5px; color: var(--accent); flex: none; }
+.rebase-subject { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rebase-author { flex: none; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rebase-msg { display: grid; gap: 6px; margin: 6px 0 2px 70px; }
+.rebase-msg input, .rebase-msg textarea {
+  width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; color: var(--text); font: inherit; font-size: 12.5px; padding: 6px 8px;
+}
+.rebase-msg textarea { resize: vertical; }

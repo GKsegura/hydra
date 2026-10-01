@@ -5,7 +5,7 @@ import {
   currentTab, hasWip, loadBranches, loadOperation, markTabStale, openWorkspace, refreshRepo, repoById, run, selectCommit, selectWip, state,
   statusOf, toast, type MenuItem,
 } from './store.ts';
-import type { Commit, Progress, Ref } from './types.ts';
+import type { Commit, Progress, Ref, RebaseStep } from './types.ts';
 
 // ------------------------------------------------------------------ diálogos e menus
 
@@ -195,6 +195,41 @@ export async function merge(id: string, branch: string, noFastForward: boolean) 
   } else if (r.status === 'up-to-date') toast('Nada para mergear: a branch atual já tem tudo.', 'ok');
   else toast(r.status === 'fast-forward' ? `Merge de ${branch} (fast-forward)` : `Merge de ${branch} concluído`, 'ok');
   return true;
+}
+
+/** O que fazer com o resultado de um rebase: cair no resolvedor de conflitos, ou avisar que terminou. */
+async function afterRebase(id: string, r: { done: true; hash: string } | { done: false; conflicts: number }): Promise<boolean> {
+  closeDialog();
+  await refreshRepo(id);
+  if (!r.done) {
+    toast(`Rebase com ${r.conflicts} conflito(s). Resolva cada arquivo e continue.`, 'error');
+    await loadOperation(id);
+    selectWip(id);
+    const first = state.operations[id]?.conflicts[0];
+    if (first) await openConflict(id, first.path);
+    return false;
+  }
+  toast('Rebase concluído', 'ok');
+  selectCommit(id, r.hash, true);
+  return true;
+}
+
+/** Roda o rebase interativo de verdade (RebaseDialog já confirmou). `true` quando terminou sem parar em conflito. */
+export async function rebaseStart(id: string, base: string, steps: RebaseStep[]): Promise<boolean> {
+  const r = await run(() => api.rebase(id, base, steps));
+  return r ? afterRebase(id, r) : false;
+}
+
+/** "Rebase de atual sobre …": leva os commits da branch atual para cima de outra, sem editar a lista. */
+export async function rebaseOntoBranch(id: string, upstream: string) {
+  const ok = await confirm({
+    title: `Rebase sobre ${upstream}`,
+    message: `Os commits da branch atual que ainda não estão em "${upstream}" são recriados em cima dela, na mesma ordem. Se algum já foi enviado ao remoto, o próximo push vai precisar de --force.`,
+    confirm: 'Rebase',
+  });
+  if (!ok) return;
+  const r = await run(() => api.rebaseOnto(id, upstream));
+  if (r) await afterRebase(id, r);
 }
 
 export async function openConflict(id: string, path: string) {
@@ -458,6 +493,7 @@ export function branchMenu(id: string, name: string, kind: 'local' | 'remote'): 
   const items: MenuItem[] = [];
   if (!isCurrent) items.push({ label: kind === 'remote' ? 'Checkout (criar branch local)' : 'Checkout', run: () => checkout(id, name) });
   if (!isCurrent && st?.branch) items.push({ label: `Merge em ${st.branch}…`, run: () => openDialog('merge', { repoId: id, branch: name }) });
+  if (!isCurrent && st?.branch) items.push({ label: `Rebase de ${st.branch} sobre ${name}…`, run: () => rebaseOntoBranch(id, name) });
   items.push({ label: 'Nova branch a partir daqui…', run: () => openDialog('create-branch', { repoId: id, from: name }) });
   if (kind === 'local') {
     items.push({ separator: true, label: '' });
@@ -492,6 +528,12 @@ export function commitMenu(id: string, commit: Commit): MenuItem[] {
     { label: 'Reverter este commit…', run: () => revert(id, commit) },
     { label: 'Cherry-pick na branch atual', run: () => cherryPick(id, commit), disabled: isHead },
     { label: 'Simular cherry-pick em um cenário…', run: () => openDialog('scenario', { commit: commit.hash, repoId: id }) },
+    {
+      label: 'Rebase interativo a partir daqui…',
+      run: () => openDialog('rebase', { repoId: id, base: commit.parents[0], fromLabel: commit.hash.slice(0, 7) }),
+      disabled: !commit.parents.length,
+      hint: !commit.parents.length ? 'commit raiz' : undefined,
+    },
     { label: 'Checkout deste commit (HEAD destacado)', run: () => checkoutCommit(id, commit.hash), disabled: isHead },
   ];
   if (isHead && !st?.detached) items.push({ label: 'Desfazer este commit…', run: () => undoLastCommit(id), hint: 'só se ainda não foi enviado' });

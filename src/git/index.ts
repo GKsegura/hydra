@@ -9,6 +9,7 @@ export * from './commit.ts';
 export * from './branches.ts';
 export * from './remote.ts';
 export * from './merge.ts';
+export * from './rebase.ts';
 export * from './simulate.ts';
 export * from './stash.ts';
 export * from './tags.ts';
