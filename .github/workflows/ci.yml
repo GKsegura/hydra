@@ -88,3 +88,22 @@ jobs:
             release/Hydra-*-portable.exe --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Extensão do VS Code: versão acompanha a do Hydra (mesma tag), empacotada à parte e anexada na mesma Release.
+      - run: npm ci
+        working-directory: vscode
+      - run: npm version "${TAG#v}" --no-git-tag-version
+        shell: bash
+        working-directory: vscode
+        env:
+          TAG: ${{ needs.release.outputs.tag }}
+      - run: npm run check
+        working-directory: vscode
+      - run: npm run package
+        working-directory: vscode
+
+      - name: Anexa o .vsix na Release
+        shell: bash
+        run: gh release upload "${{ needs.release.outputs.tag }}" vscode/hydra-vscode-*.vsix --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -660,7 +660,23 @@ Com o portátil, use o caminho do `.exe` portátil no lugar (ex.: `"C:\Ferrament
 function cronos { hydra "C:\Users\José\Documents\GitHub\CRONOS\cronos.code-workspace" }
 ```
 
-### 16. Usando o terminal integrado
+### 16. Extensão do VS Code (opcional)
+
+Para quem já vive no VS Code, a extensão **Hydra** adiciona um jeito mais rápido de chegar até ele, sem precisar de atalho nem de procurar o caminho na mão:
+
+1. Baixe o `.vsix` da [última Release](https://github.com/GKsegura/hydra/releases/latest) (mesma versão do app).
+2. No VS Code: **Extensions** (`Ctrl+Shift+X`) → menu `⋯` no topo → **Install from VSIX…** → escolha o arquivo baixado.
+3. Dois comandos ficam disponíveis (paleta `Ctrl+Shift+P`, menu de contexto do Explorer e barra de título do Explorer):
+   - **Hydra: Abrir workspace no Hydra** — abre o `.code-workspace` atual (ou a pasta aberta, se não houver um);
+   - **Hydra: Abrir este repositório no Hydra** — sobe a partir do arquivo em foco (ou da pasta clicada com o botão direito) até achar o repositório git dono dele.
+
+Com um Hydra já aberto, os dois comandos entram como **guia nova**, sem fechar o que já estava lá — igual ao "Abrir com Hydra" do Explorer (item 15).
+
+A extensão procura o Hydra nesta ordem: caminho configurado em **`hydra.executablePath`** (Settings) → instalado em `%LOCALAPPDATA%\Programs\hydra-git` → comando `hydra` no PATH. Sem achar nenhum, ela oferece o link de download. A opção **`hydra.openOnStartup`** (desligada por padrão) abre o Hydra automaticamente quando um `.code-workspace` é aberto no VS Code.
+
+A extensão só abre o app: ela não reimplementa nada da interface do Hydra, nem roda sem ele instalado. Por enquanto fica fora do Marketplace — só pelo `.vsix` mesmo.
+
+### 17. Usando o terminal integrado
 
 1. Aperte **`` Ctrl+` ``** (ou menu `⋯` do painel → **Terminal integrado**). Um Git Bash abre embaixo dos grafos, já na pasta do repo em foco:
 
@@ -686,7 +702,7 @@ function cronos { hydra "C:\Users\José\Documents\GitHub\CRONOS\cronos.code-work
 > Dentro do terminal, `Ctrl+\` é do Hydra (dividir) e não mais o `SIGQUIT` do shell.
 > Fechar a guia do workspace encerra os terminais dele.
 
-### 17. Encerrando
+### 18. Encerrando
 
 - **App desktop:** feche a janela; o servidor interno e os terminais param junto.
 - **CLI:** **Ctrl+C** no terminal do Hydra.
@@ -833,10 +849,12 @@ hydra/
 │     │                        # UpdateNotice (aviso de atualização), TimelinePane…
 │     └─ dialogs/              # criar/renomear/excluir branch, merge, rebase interativo, clonar, novo repo,
 │                              # publicar, tag, stash, GitHub, confirmação
-├─ test/                       # Vitest: operações git em repositórios temporários, rebase, terminal e versões
+├─ vscode/                     # extensão do VS Code (build e versão próprios, .vsix anexado na Release)
+│  └─ src/extension.ts · find.ts  # comandos (abrir workspace/repo) · acha o Hydra instalado, no PATH ou configurado
+├─ test/                       # Vitest: operações git em repositórios temporários, rebase, terminal, versões e a extensão
 ├─ scripts/ · build/icon.svg   # build do Electron e ícone
 ├─ build/installer.nsh         # "Abrir com Hydra" no Explorer (registro em HKCU, só no instalador)
-├─ .github/workflows/ci.yml    # testes, semantic-release e instalador + portátil + latest.yml na Release
+├─ .github/workflows/ci.yml    # testes, semantic-release, instalador + portátil + latest.yml e o .vsix na Release
 ├─ .releaserc.json · CHANGELOG.md · LICENSE
 └─ package.json                # inclui a configuração do electron-builder ("build")
 ```
@@ -930,7 +948,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - [x] Atualização em tempo real (observar os repos em vez de atualizar no foco)
 - [x] Instalador com atualização automática
 - [x] Associação de arquivos ("Abrir com Hydra" no `.code-workspace`, sem tirar o VS Code como padrão)
-- [ ] Extensão do VS Code que abre o Hydra junto com o workspace
+- [x] **Extensão do VS Code**: abre o workspace ou o repositório em foco direto do VS Code ([item 16](#16-extensão-do-vs-code-opcional) do Tutorial)
 
 ---
 

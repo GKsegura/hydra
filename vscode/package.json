@@ -1,0 +1,66 @@
+{
+  "name": "hydra-vscode",
+  "displayName": "Hydra",
+  "description": "Abre o workspace ou o repositório atual no Hydra, o cliente git visual para workspaces.",
+  "version": "0.0.0",
+  "publisher": "GKsegura",
+  "author": {
+    "name": "José Segura (GKsegura)",
+    "url": "https://github.com/GKsegura"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/GKsegura/hydra#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GKsegura/hydra.git",
+    "directory": "vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/GKsegura/hydra/issues"
+  },
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "keywords": ["git", "gitkraken", "github-desktop", "workspace", "multi-repo"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "hydra.openWorkspace", "title": "Hydra: Abrir workspace no Hydra" },
+      { "command": "hydra.openRepo", "title": "Hydra: Abrir este repositório no Hydra" }
+    ],
+    "menus": {
+      "explorer/context": [
+        { "command": "hydra.openRepo", "group": "navigation@50" }
+      ]
+    },
+    "configuration": {
+      "title": "Hydra",
+      "properties": {
+        "hydra.executablePath": {
+          "type": "string",
+          "default": "",
+          "description": "Caminho do Hydra.exe (ou do comando hydra). Em branco, a extensão procura o instalado em %LOCALAPPDATA%\\Programs\\hydra-git e depois o comando \"hydra\" no PATH."
+        },
+        "hydra.openOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Abrir o Hydra automaticamente quando um workspace com vários repositórios (.code-workspace) for aberto no VS Code."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "package": "npm run build && vsce package --no-dependencies",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.0"
+  }
+}
