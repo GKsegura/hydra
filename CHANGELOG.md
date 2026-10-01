@@ -2,6 +2,20 @@
 
 Este arquivo é mantido automaticamente pelo [semantic-release](https://github.com/semantic-release/semantic-release) a partir dos commits convencionais (`feat:`, `fix:`, …) na branch `main`.
 
+# [1.10.0](https://github.com/GKsegura/hydra/compare/v1.9.0...v1.10.0) (2026-10-01)
+
+
+### Bug Fixes
+
+* evita falha instável nos testes do simulador de cenários ([5fc2afd](https://github.com/GKsegura/hydra/commit/5fc2afd6861287c96e41ee1704c3cd9ffb2b0987))
+
+
+### Features
+
+* **desktop:** adiciona o item Abrir com Hydra no Explorer ([a102472](https://github.com/GKsegura/hydra/commit/a102472e68956382080ffcfae7a3611a90c45696))
+* **desktop:** adiciona o item Abrir com Hydra no Explorer ([d5e3a49](https://github.com/GKsegura/hydra/commit/d5e3a49863fa4781e05dc41d33045891783f2919))
+* **rebase:** adiciona rebase interativo visual ([8d50e1a](https://github.com/GKsegura/hydra/commit/8d50e1ab9e17df1adaa784439415e211880e213e))
+
 # [1.9.0](https://github.com/GKsegura/hydra/compare/v1.8.0...v1.9.0) (2026-09-30)
 
 
