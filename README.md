@@ -192,6 +192,8 @@ Baixe o **`Hydra-Setup-<versão>.exe`** da última versão em **[Releases](https
 
 Depois disso, o Hydra **se atualiza sozinho** (veja [Atualizações](#atualizações)). Para desinstalar, use *Configurações → Aplicativos → Hydra*. Seus recentes e configurações são preservados.
 
+O instalador também adiciona **"Abrir com Hydra"** no clique direito de uma pasta e de um arquivo `.code-workspace` (no Windows 11, dentro de *"Mostrar mais opções"*). Isso não muda o programa padrão: o duplo clique no `.code-workspace` continua abrindo o VS Code.
+
 ### App desktop: portátil
 
 Prefere não instalar? Baixe o **`Hydra-<versão>-portable.exe`** (~100 MB). É um arquivo só:
@@ -633,7 +635,9 @@ O `name` é opcional e vira o título do painel. O nome do arquivo vira o nome d
 
 ### 15. Atalhos para seus projetos favoritos (opcional)
 
-**App desktop:** crie um atalho do Hydra (clique direito na Área de Trabalho → *Novo → Atalho*) e, em **Destino**, coloque o executável seguido do caminho do projeto:
+**App desktop (instalador):** clique direito na pasta do projeto (ou no fundo dela, com a pasta aberta) ou no arquivo `.code-workspace` → **Abrir com Hydra**. Se o Hydra já estiver aberto, o projeto entra como uma guia nova, sem fechar as outras.
+
+Prefere um atalho fixo? Crie um atalho do Hydra (clique direito na Área de Trabalho → *Novo → Atalho*) e, em **Destino**, coloque o executável seguido do caminho do projeto:
 
 ```
 "%LOCALAPPDATA%\Programs\hydra-git\Hydra.exe" "C:\Users\José\Documents\GitHub\CRONOS\cronos.code-workspace"
@@ -820,6 +824,7 @@ hydra/
 │                              # publicar, tag, stash, GitHub, confirmação
 ├─ test/                       # Vitest: operações git em repositórios temporários, terminal e versões
 ├─ scripts/ · build/icon.svg   # build do Electron e ícone
+├─ build/installer.nsh         # "Abrir com Hydra" no Explorer (registro em HKCU, só no instalador)
 ├─ .github/workflows/ci.yml    # testes, semantic-release e instalador + portátil + latest.yml na Release
 ├─ .releaserc.json · CHANGELOG.md · LICENSE
 └─ package.json                # inclui a configuração do electron-builder ("build")
@@ -892,6 +897,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - O **stage parcial** não vale para arquivos novos (ainda fora do índice), renomeados, binários ou em conflito: esses vão inteiros.
 - Commits de merge mostram os arquivos em relação ao **primeiro pai**.
 - O app desktop é **só para Windows x64**, não é assinado (daí o aviso do SmartScreen na primeira instalação) e tem ~100 MB, porque carrega o Chromium e o Node do Electron.
+- **"Abrir com Hydra"** só vem no instalador (o portátil não mexe no registro) e, no Windows 11, aparece dentro de *"Mostrar mais opções"* — o menu de contexto novo do 11 só mostra direto os apps empacotados como MSIX.
 - O `.exe` **portátil** não se atualiza sozinho: ele só avisa. Para atualização automática, use o instalador.
 - O app desktop tem **uma janela** (um workspace por vez).
 - O **login com GitHub** está implementado mas **desativado** (em breve). Quando liberado, exige configurar um OAuth App uma vez ([veja como](#configurar-o-login-com-github-para-quando-for-liberado)).
@@ -911,7 +917,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - [ ] Rebase interativo visual
 - [x] Atualização em tempo real (observar os repos em vez de atualizar no foco)
 - [x] Instalador com atualização automática
-- [ ] Associação de arquivos ("Abrir com Hydra" no `.code-workspace`, sem tirar o VS Code como padrão)
+- [x] Associação de arquivos ("Abrir com Hydra" no `.code-workspace`, sem tirar o VS Code como padrão)
 - [ ] Extensão do VS Code que abre o Hydra junto com o workspace
 
 ---
