@@ -1,6 +1,6 @@
 {
   "name": "hydra-git",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "Cliente git visual para workspaces: todos os repositórios lado a lado, com commit, branches, merge, resolução de conflitos e sync com o GitHub.",
   "author": {
     "name": "José Segura (GKsegura)",

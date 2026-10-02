@@ -2,6 +2,13 @@
 
 Este arquivo é mantido automaticamente pelo [semantic-release](https://github.com/semantic-release/semantic-release) a partir dos commits convencionais (`feat:`, `fix:`, …) na branch `main`.
 
+# [1.12.0](https://github.com/GKsegura/hydra/compare/v1.11.0...v1.12.0) (2026-10-02)
+
+
+### Features
+
+* **github:** libera o login com GitHub ([9107197](https://github.com/GKsegura/hydra/commit/910719706bc22b59c29021ccb17f2cd8b37e822b))
+
 # [1.11.0](https://github.com/GKsegura/hydra/compare/v1.10.0...v1.11.0) (2026-10-01)
 
 
