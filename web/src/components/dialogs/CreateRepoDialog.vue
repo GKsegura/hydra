@@ -92,11 +92,7 @@ async function submit() {
         <label class="check"><input v-model="readme" type="checkbox"> Criar README.md</label>
       </div>
 
-      <div v-if="!state.github?.enabled" class="publish-box">
-        <label class="check off"><input type="checkbox" disabled> Publicar no GitHub <span class="soon-chip">em breve</span></label>
-        <small class="faint">Por enquanto: crie o repositório vazio no GitHub e, no Hydra, use <b>Publicar</b> no painel para ver os comandos.</small>
-      </div>
-      <div v-else class="publish-box">
+      <div class="publish-box">
         <label class="check"><input v-model="publish" type="checkbox" :disabled="!state.github?.user"> Publicar no GitHub</label>
         <template v-if="state.github?.user">
           <div v-if="publish" class="radios">

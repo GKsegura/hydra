@@ -11,7 +11,7 @@ import ProgressBar from './ProgressBar.vue';
 
 const LAST_PARENT = 'hydra:clone-parent';
 
-const tab = ref<'github' | 'url'>(state.github?.enabled && state.github.user ? 'github' : 'url');
+const tab = ref<'github' | 'url'>(state.github?.user ? 'github' : 'url');
 const url = ref('');
 const parent = ref(readParent());
 const name = ref('');
@@ -80,12 +80,7 @@ async function submit() {
     </div>
 
     <template v-if="tab === 'github'">
-      <div v-if="!state.github?.enabled" class="empty-box soon-box">
-        <span class="soon-chip big">em breve</span>
-        <p>Escolher entre os seus repositórios do GitHub chega junto com o login com GitHub.</p>
-        <p class="faint">Por enquanto, copie a URL do repositório no GitHub (botão verde <b>Code</b>) e use a aba <a href="#" @click.prevent="tab = 'url'">URL</a>.</p>
-      </div>
-      <div v-else-if="!state.github?.user" class="empty-box">
+      <div v-if="!state.github?.user" class="empty-box">
         <p>Entre com o GitHub para escolher entre os seus repositórios.</p>
         <button v-if="state.github?.canLogin" class="btn primary" @click="githubLogin">Entrar com GitHub</button>
         <p v-else class="faint">Login disponível no app desktop. No CLI, defina GITHUB_TOKEN ou use <code>gh auth login</code>. Ou use a aba URL.</p>

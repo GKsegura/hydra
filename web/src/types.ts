@@ -28,8 +28,6 @@ export interface OperationInfo {
 }
 
 export interface GitHubInfo {
-  /** Login com GitHub liberado? Por enquanto não: a interface mostra "em breve". */
-  enabled: boolean;
   available: boolean;
   configured: boolean;
   canLogin: boolean;

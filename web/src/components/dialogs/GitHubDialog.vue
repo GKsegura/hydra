@@ -18,16 +18,7 @@ function close() {
 
 <template>
   <BaseDialog title="Conta do GitHub" :width="480" @close="close">
-    <template v-if="!state.github?.enabled">
-      <div class="soon-box">
-        <span class="soon-chip big">em breve</span>
-        <p class="dialog-text"><b>O login com GitHub será liberado em breve.</b></p>
-        <p class="faint">Com ele você vai poder escolher entre os seus repositórios na hora de clonar, publicar repositórios novos direto do Hydra e ver Pull Requests de repositórios privados.</p>
-      </div>
-      <p class="faint">Enquanto isso, <b>push, pull, fetch e clone já funcionam</b>: quem cuida do login é o Git Credential Manager que vem com o Git for Windows. Na primeira vez ele abre uma janela do GitHub para você entrar.</p>
-    </template>
-
-    <template v-else-if="state.github?.user">
+    <template v-if="state.github?.user">
       <div class="gh-user">
         <img :src="state.github.user.avatar" alt="" width="48" height="48">
         <div>
@@ -71,7 +62,7 @@ function close() {
     <template #footer>
       <button v-if="state.github?.user" class="btn danger" @click="githubLogout">Sair</button>
       <button class="btn" @click="close">{{ state.github?.login.state === 'pending' ? 'Cancelar' : 'Fechar' }}</button>
-      <button v-if="state.github?.enabled && !state.github?.user && state.github?.available && state.github.login.state !== 'pending'" class="btn primary" @click="githubLogin">Entrar com GitHub</button>
+      <button v-if="!state.github?.user && state.github?.available && state.github.login.state !== 'pending'" class="btn primary" @click="githubLogin">Entrar com GitHub</button>
     </template>
   </BaseDialog>
 </template>

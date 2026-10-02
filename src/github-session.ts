@@ -22,7 +22,7 @@ export class GitHubSession {
   }
 
   async init() {
-    // Login desativado (em breve): não carrega token nenhum; o git segue com o Credential Manager.
+    // Login desativado (HYDRA_GITHUB_LOGIN=0): não carrega token nenhum; o git segue com o Credential Manager.
     if (!GITHUB_LOGIN_ENABLED) return;
     await this.use(await this.secrets.get().catch(() => null));
   }
@@ -44,10 +44,9 @@ export class GitHubSession {
 
   info() {
     return {
-      /** false enquanto o login com GitHub não é liberado: a interface mostra "em breve". */
-      enabled: GITHUB_LOGIN_ENABLED,
+      /** false se GITHUB_CLIENT_ID estiver vazio, ou com HYDRA_GITHUB_LOGIN=0. */
+      configured: GITHUB_LOGIN_ENABLED && loginAvailable(),
       available: GITHUB_LOGIN_ENABLED && loginAvailable() && this.secrets.persistent,
-      configured: loginAvailable(),
       canLogin: this.secrets.persistent,
       user: this.user ? { login: this.user.login, name: this.user.name, avatar: this.user.avatar_url, url: this.user.html_url } : null,
       login: this.login,
@@ -55,7 +54,7 @@ export class GitHubSession {
   }
 
   async startLogin() {
-    if (!GITHUB_LOGIN_ENABLED) throw new Error('O login com GitHub chega em breve.');
+    if (!GITHUB_LOGIN_ENABLED) throw new Error('O login com GitHub está desativado nesta build.');
     this.abort?.abort();
     const code = await startDeviceFlow();
     const abort = new AbortController();

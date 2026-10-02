@@ -74,9 +74,9 @@ O Hydra foi pensado para:
 
 ### Repositórios e workspaces
 - **Tela inicial** com **Clonar**, **Novo repositório**, **Abrir repositório**, **Abrir workspace** e os **recentes**.
-- **Clonar** por URL, com barra de progresso. (Escolher entre **os seus repositórios do GitHub** chega com o login, *em breve*.)
+- **Clonar** por URL ou escolhendo entre **os seus repositórios do GitHub** (com login), com barra de progresso.
 - **Criar repositório**: pasta, branch `main`, `.gitignore` pronto (Node, Vue/Vite, Java, Python), README e commit inicial.
-- **Publicar** um repositório sem remoto: você cria o repositório vazio no GitHub, cola a URL e o Hydra conecta o `origin` e envia. (Publicar com um clique, sem sair do Hydra, chega com o login, *em breve*.)
+- **Publicar**: com login, cria o repositório no GitHub e envia com um clique; sem login, você cria o repositório vazio no GitHub, cola a URL e o Hydra conecta o `origin` e envia.
 - **Trocar de workspace sem reiniciar**, pelo menu `workspace <nome> ▾` ou com **Ctrl+O**.
 - **No app desktop**: seletor nativo do Windows e **arrastar e soltar** o arquivo ou a pasta na janela.
 
@@ -113,9 +113,9 @@ O Hydra foi pensado para:
 - **Stash**: guardar alterações com descrição, restaurar, aplicar ou descartar pela barra lateral.
 - **Tags**: criar (leve ou anotada), enviar ao remoto e excluir (local e remota).
 
-### Conta do GitHub · *em breve*
-- O **login com GitHub** já está implementado (fluxo oficial de código de dispositivo, token **criptografado pelo Windows**), mas fica **desativado até ser liberado**. Na interface, o botão *GitHub* e os pontos que dependem dele mostram **"em breve"**.
-- Quando liberado, vai servir para listar seus repositórios ao clonar, publicar repositórios com um clique e ver PRs de repositórios privados.
+### Conta do GitHub
+- **Entrar com GitHub** (botão no topo), pelo fluxo oficial de código de dispositivo: um código, uma página do GitHub, autoriza e pronto. O token fica **criptografado pelo Windows** (`safeStorage`/DPAPI), nunca em texto puro.
+- Com a conta conectada: **escolher entre os seus repositórios** ao clonar, **publicar com um clique** (o Hydra cria o repositório no GitHub) e **Pull Requests de repositórios privados**.
 - **Sem login, tudo continua funcionando**: push, pull, fetch e clone usam o Git Credential Manager que já vem no Git for Windows. A lista de **Pull Requests** de repositórios públicos também funciona sem login.
 
 ### Terminal integrado
@@ -257,11 +257,9 @@ O `npm link` deixa o comando `hydra` disponível em qualquer terminal (`hydra --
 
 > Se não quiser o comando global, rode `npm start -- <caminho>` dentro da pasta do hydra.
 
-### Configurar o login com GitHub (para quando for liberado)
+### Usando o seu próprio OAuth App do GitHub
 
-> 🚧 **Em breve.** O login está implementado mas **desativado** por uma flag em [`src/config.ts`](src/config.ts) (`GITHUB_LOGIN_ENABLED`). Para testar localmente, rode com a variável de ambiente `HYDRA_GITHUB_LOGIN=1` depois de configurar o Client ID abaixo.
-
-O "Entrar com GitHub" usa um **OAuth App** seu (o GitHub exige um para o login por código de dispositivo). É gratuito e leva 2 minutos:
+O Hydra já vem com um **Client ID** próprio, então o login com GitHub funciona direto, sem configurar nada. Isso só é necessário para quem compila o próprio Hydra e quer usar a identidade do seu próprio OAuth App (ex.: um fork):
 
 1. No GitHub: **Settings → Developer settings → OAuth Apps → New OAuth App**.
 2. Preencha:
@@ -269,16 +267,10 @@ O "Entrar com GitHub" usa um **OAuth App** seu (o GitHub exige um para o login p
    - **Homepage URL**: `https://github.com/GKsegura/hydra`
    - **Authorization callback URL**: `http://127.0.0.1` (não é usada no device flow, mas o campo é obrigatório)
 3. Crie o app e, na página dele, marque **Enable Device Flow** e salve.
-4. Copie o **Client ID** (não precisa de client secret) e cole em [`src/config.ts`](src/config.ts):
-
-   ```ts
-   export const GITHUB_CLIENT_ID = process.env.HYDRA_GITHUB_CLIENT_ID ?? 'Ov23li…seu-client-id…';
-   ```
-
-   Ou defina a variável de ambiente `HYDRA_GITHUB_CLIENT_ID`.
+4. Copie o **Client ID** (não precisa de client secret) e defina a variável de ambiente `HYDRA_GITHUB_CLIENT_ID` (ela tem prioridade sobre o padrão em [`src/config.ts`](src/config.ts)).
 5. Gere o `.exe` de novo (`npm run desktop:build`).
 
-O Client ID é público (vai no app), mas ele sozinho não dá acesso a nada: cada pessoa autoriza a própria conta.
+O Client ID é público (vai no app), mas ele sozinho não dá acesso a nada: cada pessoa autoriza a própria conta. Para desativar o login por completo, defina `HYDRA_GITHUB_LOGIN=0`.
 
 **No CLI** o Hydra não guarda login: ele usa a variável `GITHUB_TOKEN` (ou `GH_TOKEN`) ou o login do [GitHub CLI](https://cli.github.com) (`gh auth login`), se existir.
 
@@ -570,7 +562,7 @@ A qualquer momento, **Abortar** volta tudo a como estava antes do merge. Fechar 
 
 **Clonar** (tela inicial, menu do workspace ou `Ctrl+Shift+O`):
 
-1. Aba **URL**: cole qualquer URL git (`https://…`, `git@github.com:…`). No GitHub, ela fica no botão verde **Code**. (A aba **GitHub**, para escolher entre os seus repositórios, está marcada como *em breve*.)
+1. Aba **GitHub** (com login, veja o item 12): busque e escolha entre os seus repositórios. Ou aba **URL**: cole qualquer URL git (`https://…`, `git@github.com:…`; no GitHub, ela fica no botão verde **Code**).
 2. Confira a **pasta de destino**. O padrão é `Documentos\GitHub`, e o Hydra lembra a última usada.
 3. **Clonar**: a barra mostra o progresso e, no fim, o repositório abre no Hydra.
 
@@ -578,29 +570,26 @@ A qualquer momento, **Abortar** volta tudo a como estava antes do merge. Fechar 
 
 1. Nome (espaços viram `-`), descrição e **pasta onde criar**.
 2. Escolha o **.gitignore** (Node, Vue/Vite, Java, Python ou nenhum) e se quer um **README.md**.
-3. **Criar repositório**: o Hydra cria a pasta, a branch `main` e o commit inicial, e abre o projeto. (A opção *Publicar no GitHub* no mesmo diálogo está marcada como *em breve*; para publicar agora, veja abaixo.)
+3. Com login, marque **Publicar no GitHub** (privado ou público). **Criar repositório**: o Hydra cria a pasta, a branch `main`, o commit inicial e, se marcado, publica — e abre o projeto.
 
-**Publicar um repositório que ainda não tem remoto:** o botão de sync mostra **Publicar** (ou menu `⋯` → *Publicar no GitHub…*):
+**Publicar um repositório que ainda não tem remoto** (botão de sync mostra **Publicar**, ou menu `⋯` → *Publicar no GitHub…*):
 
-1. Crie um repositório **vazio** em [github.com/new](https://github.com/new) (sem README e sem .gitignore, para não conflitar).
-2. Cole a URL que o GitHub mostrar (ex.: `https://github.com/GKsegura/meu-projeto.git`) e clique em **Conectar e enviar**.
-3. O Hydra adiciona como `origin` e envia a branch atual. Se for a primeira vez, o Git Credential Manager abre uma janela do GitHub para você entrar.
-
-Quando o login com GitHub for liberado, dá para fazer tudo isso com um clique (o Hydra cria o repositório por você).
+- **Com login:** nome, descrição e privado/público — **Publicar** cria o repositório no GitHub, adiciona como `origin` e envia a branch atual, de um clique.
+- **Sem login:** crie um repositório **vazio** em [github.com/new](https://github.com/new) (sem README e sem .gitignore, para não conflitar), cole a URL que o GitHub mostrar e clique em **Conectar e enviar**. Se for a primeira vez, o Git Credential Manager abre uma janela do GitHub para você entrar.
 
 ### 12. Conta do GitHub e Pull Requests
 
-> 🚧 **Em breve.** Hoje o botão **GitHub** (canto superior direito) mostra *em breve* e explica o que vem por aí. O que já funciona sem login: push/pull/clone (pelo Git Credential Manager), a seção **Pull Requests** para repositórios públicos e **Criar Pull Request** (abre a página do GitHub com a sua branch). O passo a passo abaixo vale quando o login for liberado.
-
-1. Clique em **Entrar** (canto superior direito). Precisa do [Client ID configurado](#configurar-o-login-com-github-para-quando-for-liberado).
+1. Clique em **GitHub** (canto superior direito) → **Entrar com GitHub**.
 2. O Hydra mostra um **código** (ex.: `ABCD-1234`). Clique em **Copiar**, depois em **Abrir github.com/login/device**, cole o código e autorize.
 3. Pronto: o avatar aparece no topo. O login fica salvo (criptografado) para as próximas vezes.
 
 Com a conta conectada:
 
-- a seção **Pull Requests** da barra lateral lista os PRs abertos do repo em foco (clique abre no GitHub);
+- a seção **Pull Requests** da barra lateral lista os PRs abertos do repo em foco, inclusive de **repositórios privados** (clique abre no GitHub);
 - **Criar Pull Request** (clique direito numa branch) abre a página de PR do GitHub já com a sua branch;
-- clonar mostra seus repositórios, e dá para criar/publicar repositórios.
+- **Clonar** mostra seus repositórios, e **Criar repositório**/**Publicar** fazem tudo com um clique (seção 11).
+
+**Sem login**, tudo isso continua funcionando sem a conta conectada: push/pull/clone (pelo Git Credential Manager) e Pull Requests de repositórios **públicos**.
 
 Para sair: clique no avatar → **Sair**. O token é apagado deste computador.
 
@@ -719,7 +708,6 @@ Nada fica rodando em segundo plano. O Hydra só altera seus repositórios quando
 | *"O remoto tem commits que você ainda não tem"* ao dar push | Faça **Pull** primeiro (e resolva conflitos, se houver) |
 | *"Suas alterações locais seriam sobrescritas"* | Faça commit, guarde (stash) ou descarte as alterações antes de trocar de branch/fazer merge |
 | "Excluir…" está desabilitado para uma branch | É a branch em que você está: troque de branch antes |
-| O botão GitHub diz "em breve" | O login com GitHub ainda não foi liberado. Push/pull/clone funcionam pelo Git Credential Manager; para publicar, use o caminho manual (seção 11) |
 | *"Esse commit já está no remoto"* ao desfazer | Commits publicados não são desfeitos para não reescrever o histórico: use **Reverter** |
 | `hydra` não é reconhecido como comando | Rode `npm link` na pasta do hydra e **abra um terminal novo**. Alternativa: `npm start -- <caminho>` |
 | Atualizei o Hydra, mas a tela continua igual | Reinicie o Hydra e recarregue com **Ctrl+R**. O `F5` do Hydra só atualiza os dados |
@@ -739,7 +727,7 @@ Nada fica rodando em segundo plano. O Hydra só altera seus repositórios quando
 | O quê | App desktop | CLI / navegador |
 |---|---|---|
 | Recentes | `%APPDATA%\hydra-git\recents.json` | `%USERPROFILE%\.hydra\recents.json` |
-| Login do GitHub (quando liberado) | `%APPDATA%\hydra-git\github.bin` (criptografado pelo Windows) | não guarda (usa `GITHUB_TOKEN` ou `gh`) |
+| Login do GitHub | `%APPDATA%\hydra-git\github.bin` (criptografado pelo Windows) | não guarda (usa `GITHUB_TOKEN` ou `gh`) |
 | Tamanho e posição da janela | `%APPDATA%\hydra-git\window.json` | — |
 | O app instalado | `%LOCALAPPDATA%\Programs\hydra-git` (o portátil não instala nada) | — |
 | Layout dos painéis (inclusive a timeline), altura do terminal e pasta de clone | armazenamento local do app | `localStorage` do navegador |
@@ -930,7 +918,6 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - **"Abrir com Hydra"** só vem no instalador (o portátil não mexe no registro) e, no Windows 11, aparece dentro de *"Mostrar mais opções"* — o menu de contexto novo do 11 só mostra direto os apps empacotados como MSIX.
 - O `.exe` **portátil** não se atualiza sozinho: ele só avisa. Para atualização automática, use o instalador.
 - O app desktop tem **uma janela** (um workspace por vez).
-- O **login com GitHub** está implementado mas **desativado** (em breve). Quando liberado, exige configurar um OAuth App uma vez ([veja como](#configurar-o-login-com-github-para-quando-for-liberado)).
 
 ## Roadmap
 
@@ -938,7 +925,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - [x] Criar, trocar, renomear e excluir branches (local e remota)
 - [x] Merge com prévia e resolvedor visual de conflitos
 - [x] Clonar, criar e publicar repositórios; Pull Requests
-- [ ] **Liberar o login com GitHub** (já implementado, desativado): escolher seus repositórios ao clonar, publicar com um clique, PRs privados
+- [x] **Login com GitHub**: escolher seus repositórios ao clonar, publicar com um clique, PRs privados ([item 12](#12-conta-do-github-e-pull-requests) do Tutorial)
 - [x] **Terminal integrado**: Git Bash embaixo dos grafos, uma aba por repositório, com o grafo atualizando depois dos comandos
 - [x] **Stage parcial**: escolher trechos/linhas do diff para o commit
 - [x] **Commit em vários repos de uma vez** com a mesma mensagem (ex.: a mesma feature nos 4 repos do CRONOS)

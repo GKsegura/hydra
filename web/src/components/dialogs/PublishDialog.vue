@@ -17,7 +17,7 @@ const progress = ref<Progress | null>(null);
 const error = ref('');
 const remoteUrl = ref('');
 
-// Com login (quando liberado): o Hydra cria o repositório no GitHub e envia.
+// Com login: o Hydra cria o repositório no GitHub e envia.
 async function submit() {
   if (!name.value.trim() || busy.value) return;
   busy.value = true;
@@ -54,13 +54,11 @@ async function connect() {
 
 <template>
   <BaseDialog title="Publicar repositório" :busy="busy" :width="520" @close="closeDialog">
-    <!-- Login com GitHub ainda não liberado: caminho manual, que já funciona -->
-    <template v-if="!state.github?.enabled">
-      <div class="soon-box compact">
-        <span class="soon-chip">em breve</span>
-        <span class="faint">Publicar com um clique (criando o repositório no GitHub pelo Hydra) chega junto com o login com GitHub.</span>
-      </div>
-      <p class="dialog-text">Por enquanto, em dois passos:</p>
+    <div v-if="!state.github?.user" class="empty-box">
+      <p>Este repositório ainda não tem remoto.</p>
+      <button v-if="state.github?.canLogin" class="btn primary" @click="githubLogin">Entrar com GitHub para publicar com um clique</button>
+      <p v-else class="faint">Login disponível no app desktop.</p>
+      <p class="dialog-text">Ou, sem entrar, em dois passos:</p>
       <ol class="steps">
         <li>
           Crie um repositório <b>vazio</b> no GitHub (sem README, sem .gitignore):
@@ -74,15 +72,6 @@ async function connect() {
         </li>
       </ol>
       <p class="faint">O Hydra adiciona como <code>origin</code> e envia a branch atual. Se o GitHub pedir login, o Git Credential Manager abre uma janela para você entrar.</p>
-    </template>
-
-    <div v-else-if="!state.github?.user" class="empty-box">
-      <p>Este repositório ainda não tem remoto. Para publicá-lo, entre com o GitHub.</p>
-      <button v-if="state.github?.canLogin" class="btn primary" @click="githubLogin">Entrar com GitHub</button>
-      <p v-else class="faint">
-        Login disponível no app desktop. Pelo terminal: crie o repositório no GitHub e rode
-        <code>git remote add origin &lt;url&gt;</code>, depois use Push.
-      </p>
     </div>
     <form v-else class="form" @submit.prevent="submit">
       <label class="field"><span>Nome no GitHub</span><input v-model="name" spellcheck="false"></label>
@@ -98,8 +87,8 @@ async function connect() {
     <p v-if="error" class="err">{{ error }}</p>
     <template #footer>
       <button class="btn" :disabled="busy" @click="closeDialog">Cancelar</button>
-      <button v-if="!state.github?.enabled" class="btn primary" :disabled="!remoteUrl.trim() || busy" @click="connect">Conectar e enviar</button>
-      <button v-else-if="state.github?.user" class="btn primary" :disabled="!name.trim() || busy" @click="submit">{{ busy ? 'Publicando…' : 'Publicar' }}</button>
+      <button v-if="state.github?.user" class="btn primary" :disabled="!name.trim() || busy" @click="submit">{{ busy ? 'Publicando…' : 'Publicar' }}</button>
+      <button v-else class="btn primary" :disabled="!remoteUrl.trim() || busy" @click="connect">Conectar e enviar</button>
     </template>
   </BaseDialog>
 </template>
