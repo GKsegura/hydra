@@ -3,6 +3,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
 import { desktop, IS_STATIC } from './api.ts';
 import { fetchRepo, loadGitHub, openDialog, openIn, openOnGitHub, pullRepo, pushRepo } from './actions.ts';
+import AppIcon from './components/AppIcon.vue';
 import CommitDetail from './components/CommitDetail.vue';
 import ConflictResolver from './components/ConflictResolver.vue';
 import ContextMenu from './components/ContextMenu.vue';
@@ -187,7 +188,7 @@ onBeforeUnmount(() => {
     <WelcomeScreen v-if="showWelcome" />
     <template v-else-if="state.summary">
       <RepoCards />
-      <main class="main">
+      <main class="main" :class="{ 'detail-collapsed': state.detailCollapsed }">
         <SideBar />
         <section class="center">
           <div class="center-main">
@@ -197,7 +198,10 @@ onBeforeUnmount(() => {
           </div>
           <TerminalDock v-if="state.terminal.tabs.length" />
         </section>
-        <aside class="detail">
+        <aside v-if="state.detailCollapsed" class="detail detail-strip">
+          <button class="btn ghost sm" title="Expandir painel" @click="state.detailCollapsed = false"><AppIcon name="chevron-left" /></button>
+        </aside>
+        <aside v-else class="detail">
           <WipPanel v-if="state.selected?.type === 'wip'" :key="`wip:${state.selected.repoId}`" :repo-id="state.selected.repoId" />
           <CommitDetail v-else-if="state.selected?.type === 'commit'" :repo-id="state.selected.repoId" :hash="state.selected.hash" />
           <div v-else class="d-note">Selecione um commit ou a linha // WIP.</div>

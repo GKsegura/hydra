@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue';
 import { api, IS_STATIC } from '../api.ts';
 import { abortOperation, continueOperation, discard, openConflict, openDialog, openMenu, undoLastCommit } from '../actions.ts';
 import { commitStaged, loadOperation, openWorkDiff, repoById, repoColor, stageFiles, state, statusOf, unstageFiles } from '../store.ts';
+import AppIcon from './AppIcon.vue';
 import FileItem from './FileItem.vue';
 
 const props = defineProps<{ repoId: string }>();
@@ -63,6 +64,7 @@ function fileMenu(ev: MouseEvent, path: string, isStaged: boolean) {
       <span class="repo-dot" :style="{ '--c': repoColor(repoId) }" />
       <span><b>{{ repoById(repoId)?.name }}</b> · {{ status.branch ?? 'HEAD destacado' }}</span>
       <button v-if="!IS_STATIC && status.files.length && !status.operation" class="btn sm ghost push-right" title="Guardar alterações (stash)" @click="openDialog('stash', { repoId })">Stash</button>
+      <button class="btn ghost sm" title="Minimizar painel" @click="state.detailCollapsed = true"><AppIcon name="chevron-right" /></button>
     </div>
 
     <!-- Merge / revert em andamento -->

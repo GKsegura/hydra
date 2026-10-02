@@ -33,6 +33,7 @@ export const state = reactive({
   timelineOnly: false, // com a timeline ligada: esconde os painéis dos repos e deixa só ela na tela
   active: null as string | null, // repo em foco (detalhe, sidebar, teclado)
   selected: null as Selection | null,
+  detailCollapsed: false, // painel da direita (commit/WIP) minimizado numa faixa fina
   filter: '',
   drafts: {} as Record<string, { summary: string; body: string }>,
   diff: null as DiffView | null,

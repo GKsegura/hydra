@@ -57,6 +57,7 @@ async function copy() {
       <span class="muted">·</span>
       <code>{{ hash.slice(0, 8) }}</code>
       <button class="btn ghost sm" title="Copiar hash" @click="copy"><AppIcon name="copy" /></button>
+      <button class="btn ghost sm" title="Minimizar painel" @click="state.detailCollapsed = true"><AppIcon name="chevron-right" /></button>
     </div>
 
     <div class="d-card">

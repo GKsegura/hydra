@@ -39,6 +39,14 @@ watch(
   (height) => write(() => localStorage, PREFS_KEY, { height }),
 );
 
+// Painel de detalhes minimizado: também vale para todos os workspaces.
+const DETAIL_KEY = 'hydra:detail-collapsed';
+state.detailCollapsed = read<boolean>(() => localStorage, DETAIL_KEY) === true;
+watch(
+  () => state.detailCollapsed,
+  (collapsed) => write(() => localStorage, DETAIL_KEY, collapsed),
+);
+
 export async function loadTerminalInfo() {
   if (IS_STATIC) return;
   try {
