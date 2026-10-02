@@ -2,6 +2,13 @@
 
 Este arquivo é mantido automaticamente pelo [semantic-release](https://github.com/semantic-release/semantic-release) a partir dos commits convencionais (`feat:`, `fix:`, …) na branch `main`.
 
+# [1.13.0](https://github.com/GKsegura/hydra/compare/v1.12.0...v1.13.0) (2026-10-02)
+
+
+### Features
+
+* **web:** permite minimizar o painel de detalhes ([7831899](https://github.com/GKsegura/hydra/commit/78318997828a8ddde59864ce223c47e39c8811b4))
+
 # [1.12.0](https://github.com/GKsegura/hydra/compare/v1.11.0...v1.12.0) (2026-10-02)
 
 
