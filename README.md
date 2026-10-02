@@ -718,7 +718,6 @@ Nada fica rodando em segundo plano. O Hydra só altera seus repositórios quando
 | *"Nenhum repositório git encontrado nesse caminho"* | O caminho não tem pasta com `.git`. Confira o caminho |
 | Commit falha com *"Please tell me who you are"* | `git config --global user.name "Seu Nome"` e `git config --global user.email "voce@exemplo.com"` |
 | Commits antigos não aparecem | Só os 1000 mais recentes são carregados. No CLI, use `--max 5000` |
-| *"Rebase em andamento"* | O Hydra ainda não conduz rebase: conclua ou aborte pelo terminal integrado (`git rebase --continue` / `--abort`) |
 | *"Terminal integrado indisponível"* | O módulo `node-pty` não foi instalado (no CLI, ele é opcional). Rode `npm install` de novo na pasta do hydra; o `.exe` já vem com ele |
 | O terminal abriu PowerShell em vez de Git Bash | O Hydra não achou o `bash.exe` do Git. Confira se o Git for Windows está instalado com o Git Bash |
 
@@ -917,7 +916,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 - O app desktop é **só para Windows x64**, não é assinado (daí o aviso do SmartScreen na primeira instalação) e tem ~100 MB, porque carrega o Chromium e o Node do Electron.
 - **"Abrir com Hydra"** só vem no instalador (o portátil não mexe no registro) e, no Windows 11, aparece dentro de *"Mostrar mais opções"* — o menu de contexto novo do 11 só mostra direto os apps empacotados como MSIX.
 - O `.exe` **portátil** não se atualiza sozinho: ele só avisa. Para atualização automática, use o instalador.
-- O app desktop tem **uma janela** (um workspace por vez).
+- O app desktop abre numa **única janela**: vários workspaces cabem como abas dentro dela ([seção 13](#13-trocando-de-workspace)), mas não dá para abrir duas janelas lado a lado.
 
 ## Roadmap
 
