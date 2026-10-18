@@ -943,3 +943,7 @@ O Hydra executa git na sua máquina, então tudo foi fechado para uso local:
 Distribuído sob a **[licença MIT](LICENSE)**: qualquer pessoa pode usar, copiar, modificar e redistribuir o Hydra, inclusive comercialmente, **desde que mantenha o aviso de copyright e o texto da licença** (`Copyright (c) 2026 José Segura (GKsegura)`) em todas as cópias ou partes substanciais do código.
 
 **Crafted by GKsegura**: feito por **José Segura** ([@GKsegura](https://github.com/GKsegura)). © 2026.
+
+## 📊 Linguagens
+
+![Linguagens](https://raw.githubusercontent.com/GKsegura/GKsegura/main/cards/hydra.svg)
